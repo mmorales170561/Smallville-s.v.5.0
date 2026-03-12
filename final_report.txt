@@ -1,0 +1,8 @@
+Target URL: paypal
+In-Scope Regex: py.pl,paypal.me,*.xoom.com,*.venmo.com,*.paypalcorp.com,*.paypal.com,*.paylution.com,*.paydiant.com,*.hyperwallet.com,*.braintreepayments.com,*.braintreegateway.com,*.braintree.tools,*.braintree-api.com
+Out-of-Scope Regex: 
+1) Heat Vision [httpx]   | 2) X-Ray [ffuf] | 3) Observer (Passive)
+4) Chain-Breaker [API]   | 5) PhantomZone [nuclei] | 6) Full Hunt
+Select Protocol: 6
+[>>>] Initiating Full Elite Hunt on paypal...
+[>>>] Engaging Passive Intelligence (subfinder/waybackurls)...
