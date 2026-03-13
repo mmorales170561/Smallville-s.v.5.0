@@ -1,0 +1,4 @@
+git
+curl
+wget
+ca-certificates
