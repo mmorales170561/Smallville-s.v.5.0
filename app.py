@@ -40,6 +40,12 @@ target = st.text_input("TARGET DOMAIN")
 if st.button("RUN RECON"):
     with st.spinner("Investigating..."):
         try:
+            # We explicitly define the path to powers.sh
+            cmd = f"source ./powers.sh && {mapping[power]} {target}"
+            result = subprocess.check_output(cmd, shell=True, executable='/bin/bash', stderr=subprocess.STDOUT)
+            st.code(result.decode('utf-8'))
+        except Exception as e:
+            st.error(f"Error: {e}")
             # We call the tool directly now
             result = subprocess.check_output(["subfinder", "-d", target], stderr=subprocess.STDOUT)
             st.code(result.decode())
