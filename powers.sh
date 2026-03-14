@@ -1,20 +1,20 @@
 #!/bin/bash
+# powers.sh - Kryptonian Recon Library
 
-# Observer: Passive Recon
 observer() {
-    echo "--- DAILY PLANET OBSERVER: SCANNING $1 ---"
-    subfinder -d "$1" -silent
+    echo "Scanning $1..."
+    echo "IN SCOPE: $IN_SCOPE"
+    subfinder -d "$1" -silent | grep -f <(echo "$IN_SCOPE" | tr ',' '\n')
 }
 
-# Kingpin: High Value Targets
 kingpin() {
-    echo "--- DAILY PLANET KINGPIN: FILTERING $1 ---"
-    # Example logic: just listing common files
-    subfinder -d "$1" -silent | httpx -silent
+    echo "Identifying High-Value Targets..."
+    # Add logic here to filter for admin/dev subdomains
+    subfinder -d "$1" -silent | grep -vf <(echo "$OUT_SCOPE" | tr ',' '\n')
 }
 
-# Automated Hunt: The full sweep
 automated_hunt() {
-    echo "--- DAILY PLANET AUTOMATED HUNT: $1 ---"
-    subfinder -d "$1" -silent | httpx -silent | nuclei -silent
+    echo "Full Scale Hunt on $1..."
+    # Standard recon flow
+    subfinder -d "$1" -silent | httpx -silent
 }
