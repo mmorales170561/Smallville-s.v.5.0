@@ -1,20 +1,20 @@
 #!/bin/bash
-# powers.sh - Kryptonian Recon Library
+# powers.sh
 
 observer() {
-    echo "Scanning $1..."
-    echo "IN SCOPE: $IN_SCOPE"
-    subfinder -d "$1" -silent | grep -f <(echo "$IN_SCOPE" | tr ',' '\n')
+    echo ">> [INFO] INITIALIZING SUBDOMAIN DISCOVERY..."
+    subfinder -d "$1" -silent | grep -vE "${OUT_SCOPE//, /|}"
+    echo ">> [SUCCESS] SCAN COMPLETE."
 }
 
 kingpin() {
-    echo "Identifying High-Value Targets..."
-    # Add logic here to filter for admin/dev subdomains
-    subfinder -d "$1" -silent | grep -vf <(echo "$OUT_SCOPE" | tr ',' '\n')
+    echo ">> [INFO] MAPPING ATTACK SURFACE..."
+    subfinder -d "$1" -silent | httpx -silent
+    echo ">> [SUCCESS] SURFACE MAPPED."
 }
 
 automated_hunt() {
-    echo "Full Scale Hunt on $1..."
-    # Standard recon flow
-    subfinder -d "$1" -silent | httpx -silent
+    echo ">> [INFO] ENGAGING PHANTOM_ZONE SCAN..."
+    subfinder -d "$1" -silent | nuclei -silent
+    echo ">> [SUCCESS] HUNT CONCLUDED."
 }
