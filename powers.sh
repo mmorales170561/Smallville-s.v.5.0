@@ -1,20 +1,17 @@
 #!/bin/bash
-# powers.sh
+# powers.sh - THE DAILY PLANET RECON LIBRARY
 
 observer() {
-    echo ">> [INFO] INITIALIZING SUBDOMAIN DISCOVERY..."
+    echo ">> [OBSERVER] SCANNING DIGITAL HORIZON FOR $1..."
     subfinder -d "$1" -silent | grep -vE "${OUT_SCOPE//, /|}"
-    echo ">> [SUCCESS] SCAN COMPLETE."
 }
 
 kingpin() {
-    echo ">> [INFO] MAPPING ATTACK SURFACE..."
+    echo ">> [KINGPIN] PEERING THROUGH SURFACE FOR HIGH-VALUE ASSETS..."
     subfinder -d "$1" -silent | httpx -silent
-    echo ">> [SUCCESS] SURFACE MAPPED."
 }
 
 automated_hunt() {
-    echo ">> [INFO] ENGAGING PHANTOM_ZONE SCAN..."
+    echo ">> [PHANTOM_ZONE] ENGAGING FULL-STELTH HUNT..."
     subfinder -d "$1" -silent | nuclei -silent
-    echo ">> [SUCCESS] HUNT CONCLUDED."
 }
