@@ -1,17 +1,19 @@
 #!/bin/bash
-# powers.sh - THE DAILY PLANET RECON LIBRARY
+# powers.sh
 
 observer() {
-    echo ">> [OBSERVER] SCANNING DIGITAL HORIZON FOR $1..."
+    echo ">> [SYS_LOG] INITIALIZING SUBDOMAIN_SCAN..."
+    echo ">> [SYS_LOG] FILTERING BY IN_SCOPE..."
     subfinder -d "$1" -silent | grep -vE "${OUT_SCOPE//, /|}"
+    echo ">> [SYS_LOG] SCAN_SUCCESS."
 }
 
 kingpin() {
-    echo ">> [KINGPIN] PEERING THROUGH SURFACE FOR HIGH-VALUE ASSETS..."
+    echo ">> [SYS_LOG] SCANNING_FOR_KINGPIN_ASSETS..."
     subfinder -d "$1" -silent | httpx -silent
 }
 
 automated_hunt() {
-    echo ">> [PHANTOM_ZONE] ENGAGING FULL-STELTH HUNT..."
+    echo ">> [SYS_LOG] ENGAGING NUCLEI_HUNT..."
     subfinder -d "$1" -silent | nuclei -silent
 }
