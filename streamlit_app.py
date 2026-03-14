@@ -1,40 +1,57 @@
 import streamlit as st
 import subprocess
 import os
+from datetime import datetime
 
-st.set_page_config(page_title="Smallville Suite", page_icon="🛡️", layout="wide")
+# --- SETTINGS & AUTH ---
+st.set_page_config(page_title="The Daily Planet", page_icon="🗞️", layout="wide")
 
-st.title("🛡️ Smallville Suite: Elite Recon")
+if 'auth' not in st.session_state:
+    st.session_state['auth'] = False
 
-# 1. Cloud Provisioning: Install tools if they aren't in /tmp
+# --- STAGE 1: LOGIN GATES ---
+if not st.session_state['auth']:
+    st.title("🛡️ ACTION COMICS: ACCESS RESTRICTED")
+    c1 = st.text_input("ACCESS CODE", type="password")
+    if c1.lower() == "superman":
+        st.info("GATE 1 CLEARED. ENTER SMALLVILLE CREDENTIALS.")
+        u = st.text_input("USERNAME")
+        p = st.text_input("PASSWORD", type="password")
+        if u.lower() == "clarkkent" and p.lower() == "smallville":
+            if st.button("LOGIN"):
+                st.session_state['auth'] = True
+                st.rerun()
+    st.stop()
+
+# --- STAGE 2: AUTO-INSTALLER ---
 if not os.path.exists("/tmp/bin/subfinder"):
-    with st.status("🛠️ Provisioning Cloud Environment...", expanded=True) as status:
-        st.write("Installing Go and Security Tools...")
+    with st.status("🛠️ Provisioning Superman's Arsenal...", expanded=False):
         subprocess.run(["sh", "setup_cloud.sh"])
-        status.update(label="✅ Environment Ready!", state="complete", expanded=False)
-
-# 2. Update Path so Python can see the new tools
 os.environ["PATH"] += os.pathsep + "/tmp/bin"
 
-# 3. Sidebar Status
-st.sidebar.header("System Status")
-st.sidebar.success("Core: Online")
-st.sidebar.info(f"Working Dir: {os.getcwd()}")
+# --- STAGE 3: THE DAILY PLANET UI ---
+st.markdown("<h1 style='text-align: center; border-bottom: 2px solid black;'>THE DAILY PLANET</h1>", unsafe_allow_html=True)
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.write(f"**DATE:** {datetime.now().strftime('%B %d, %Y')}")
+with col2:
+    st.write("**METROPOLIS WEATHER:** 81°F | Cloudy")
+with col3:
+    st.write("**EDITION:** Final Alpha")
 
-# 4. Main Interface
-action = st.selectbox("Select Mission Power", ["observer", "kingpin", "automated_hunt"])
-target = st.text_input("Target Domain", placeholder="e.g., paypal.com")
+st.sidebar.header("🦸 SUPERMAN'S ABILITIES")
+power = st.sidebar.selectbox("Choose Power", ["Observer", "X-Ray Vision", "Heat Vision", "Phantom Zone"])
+target = st.text_input("IDENTIFY TARGET HOST", placeholder="e.g., target.com")
 
-if st.button("🚀 Execute Power"):
-    if not target and action != "kingpin":
-        st.warning("Please enter a target domain.")
-    else:
-        with st.spinner(f"Engaging {action}..."):
-            try:
-                # We source powers.sh to access your functions directly
-                cmd = f"source powers.sh && {action} {target}"
-                result = subprocess.check_output(['/bin/bash', '-c', cmd], stderr=subprocess.STDOUT)
-                st.subheader("Mission Output")
-                st.code(result.decode('utf-8'))
-            except Exception as e:
-                st.error(f"Mission Interrupted: {str(e)}")
+if st.button("ENGAGE POWER"):
+    with st.spinner("Writing the front-page story..."):
+        try:
+            mapping = {"Observer": "observer", "X-Ray Vision": "kingpin", 
+                       "Heat Vision": "heat_vision", "Phantom Zone": "automated_hunt"}
+            cmd = f"source powers.sh && {mapping[power]} {target}"
+            result = subprocess.check_output(['/bin/bash', '-c', cmd], stderr=subprocess.STDOUT)
+            st.markdown("### 🗞️ BREAKING NEWS")
+            st.caption("Written by: Clark Kent")
+            st.code(result.decode('utf-8'))
+        except Exception as e:
+            st.error(f"LEXCORP INTERFERENCE: {str(e)}")
