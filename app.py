@@ -2,68 +2,123 @@ import streamlit as st
 import subprocess
 import os
 
-# --- MAINFRAME THEME ENGINE ---
-st.set_page_config(page_title="DAILY_PLANET_MAINFRAME", layout="wide")
+# --- AUTHENTICATION STATE ---
+if 'auth' not in st.session_state:
+    st.session_state['auth'] = False
 
-# ASCII Banner (The Daily Planet)
-ASCII_BANNER = """
-    ____        _ __     __    ____  __                __ 
-   / __ \____ _(_) /__  / /   / __ \/ /___ _____  ____/ /_
-  / / / / __ `/ / / _ \/ /   / /_/ / / __ `/ __ \/ __  / _ \\
- / /_/ / /_/ / / /  __/ /   / ____/ / /_/ / / / / /_/ /  __/
-/_____/\__,_/_/_/\___/_/   /_/   /_/\__,_/_/ /_/\__,_/\___/ 
-"""
+# --- TERMINAL STYLING ENGINE ---
+st.set_page_config(page_title="ACTION_COMICS_TERMINAL", layout="wide")
 
-st.markdown(f"""
+st.markdown("""
     <style>
-    .stApp {{ background-color: #000000; color: #00FF00; font-family: 'Courier New', monospace; }}
-    pre {{ color: #00FF00; background-color: #000; border: none; }}
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {{ 
-        background-color: #050505; color: #00FF00; border: 1px solid #00FF00; 
-    }}
-    .stButton>button {{ background-color: #00FF00; color: black; font-weight: bold; border-radius: 0; }}
+    /* Phosphor Green CRT Theme */
+    .stApp { 
+        background-color: #000000; 
+        color: #33ff33; 
+        font-family: 'Courier New', Courier, monospace;
+        background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        background-size: 100% 2px, 3px 100%;
+    }
+    
+    /* Force Green Text for All Elements */
+    h1, h2, h3, p, label, .stMarkdown, .stCodeBlock { color: #33ff33 !important; }
+    
+    /* Terminal Inputs */
+    input, textarea { 
+        background-color: #000 !important; 
+        color: #33ff33 !important; 
+        border: 1px solid #33ff33 !important;
+        text-transform: uppercase;
+    }
+    
+    /* Custom ASCII Styling */
+    pre { 
+        color: #33ff33 !important; 
+        background-color: transparent !important; 
+        border: none !important; 
+        font-size: 10px !important;
+        line-height: 1.1 !important;
+    }
+    
+    /* Terminal Buttons */
+    .stButton>button { 
+        background-color: transparent; 
+        color: #33ff33; 
+        border: 1px solid #33ff33;
+        border-radius: 0;
+        width: 100%;
+    }
+    .stButton>button:hover {
+        background-color: #33ff33;
+        color: #000;
+    }
     </style>
-    <pre>{ASCII_BANNER}</pre>
 """, unsafe_allow_html=True)
 
-# --- LOGIN GATE ---
-if 'auth' not in st.session_state: st.session_state['auth'] = False
+# The Splash Banner
+BANNER = r"""
+    ___  ____________________  _   __  __________  __  __________________
+   /   |/ ____/_  __/  _/ __ \/ | / / / ____/ __ \/  |/  /  _/ ____/ ___/
+  / /| / /     / /  / // / / /  |/ / / /   / / / / /|_/ // // /    \__ \ 
+ / ___ / /___ / / _/ // /_/ / /|  / / /___/ /_/ / /  / // // /___ ___/ / 
+/_/  |_\____//_/ /___/\____/_/ |_/  \____/\____/_/  /_/___/\____//____/ 
+                                                                         
+"""
 
+# --- STAGE 1: THE LOGIN TERMINAL ---
 if not st.session_state['auth']:
-    st.markdown("### >>_SYSTEM_ACCESS_RESTRICTED")
-    code = st.text_input("ENTER_SECRET_FREQUENCY", type="password")
-    if code == "superman":
-        u = st.text_input("ID")
-        p = st.text_input("KEY", type="password")
-        if u == "clarkkent" and p == "smallville":
-            if st.button("EXECUTE_ACCESS"):
-                st.session_state['auth'] = True
-                st.rerun()
+    st.code(BANNER)
+    st.write(">> [UPLINK_ESTABLISHED_METROPOLIS_HUB]")
+    
+    # Login Row
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        st.write("Password:")
+    with col2:
+        # Collapsed label to keep it looking like a CLI prompt
+        pwd = st.text_input("", type="password", label_visibility="collapsed", key="login_pwd")
+    
+    if pwd:
+        if pwd == "superman":
+            st.session_state['auth'] = True
+            st.rerun()
+        else:
+            st.error(">> [ERR] INVALID_KRYPTON_KEY")
     st.stop()
 
-# --- THE TERMINAL DESK ---
-st.markdown("### >>_DAILY_PLANET_RECON_OS_V5.0")
-st.write(">> STATUS: METROPOLIS MAIN OFFICE | WEATHER: 72°F | REPORTING BY: CLARK KENT")
+# --- STAGE 2: THE RECON INTERFACE ---
+st.code(BANNER)
+st.write(">> WELCOME, AGENT_KENT. DAILY PLANET RECONNAISSANCE SUITE IS ONLINE.")
 
+# Investigation Layout
 c1, c2 = st.columns(2)
 with c1:
-    target = st.text_input(">>_TARGET_DOMAIN")
-    in_scope = st.text_area(">>_IN_SCOPE_ASSETS")
+    target = st.text_input(">> TARGET_HOST")
+    in_scope = st.text_area(">> SET_IN_SCOPE")
 with c2:
-    out_scope = st.text_area(">>_OUT_OF_SCOPE")
+    out_scope = st.text_area(">> SET_OUT_SCOPE")
 
-mod = st.selectbox(">>_INVESTIGATION_MODULE", ["Observer", "Kingpin", "Automated Hunt"])
+ability = st.selectbox(">> SELECT_POWER", ["Observer", "Kingpin", "Automated Hunt"])
 
-if st.button(">>_ENGAGE"):
-    with st.spinner(">>_PROCESSING_THROUGH_PHANTOM_ZONE..."):
+if st.button(">> FILE_THE_STORY"):
+    with st.spinner(">> [BUSY] TYPING_REPORT..."):
         try:
-            os.environ["IN_SCOPE"], os.environ["OUT_SCOPE"] = in_scope, out_scope
-            cmd = f"source ./powers.sh && {mod.lower().replace(' ', '_')} {target}"
+            # Set environment for the shell script
+            os.environ["OUT_SCOPE"] = out_scope
+            os.environ["IN_SCOPE"] = in_scope
+            
+            # Map the selection to the bash function
+            mapping = {"Observer": "observer", "Kingpin": "kingpin", "Automated Hunt": "automated_hunt"}
+            cmd = f"source ./powers.sh && {mapping[ability]} {target}"
+            
+            # Execute
             result = subprocess.check_output(cmd, shell=True, executable='/bin/bash', stderr=subprocess.STDOUT)
             
-            st.markdown("### >>_SCAN_RESULTS")
+            st.markdown("### >> BREAKING_NEWS_RESULTS")
             st.code(result.decode('utf-8'))
             
-            st.download_button("📥_SAVE_REPORT", result.decode('utf-8'), f"DP_Report_{target}.txt")
+            # Export function
+            st.download_button("📥 EXPORT_TELETYPE", result.decode('utf-8'), f"DP_Log_{target}.txt")
+            
         except Exception as e:
-            st.error(f">>_FATAL_ERROR: {str(e)}")
+            st.error(f">> [CRITICAL_FAILURE] LEX_LUTHER_INTERFERENCE: {str(e)}")
