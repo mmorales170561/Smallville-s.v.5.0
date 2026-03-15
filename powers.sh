@@ -1,11 +1,11 @@
 #!/bin/bash
-# powers.sh
+
+# ENSURE SYSTEM PATH INCLUDES OUR TOOLS
+export PATH=$PATH:/tmp/bin
 
 observer() {
     echo ">> [SYS_LOG] INITIALIZING SUBDOMAIN_SCAN..."
-    echo ">> [SYS_LOG] FILTERING BY IN_SCOPE..."
     subfinder -d "$1" -silent | grep -vE "${OUT_SCOPE//, /|}"
-    echo ">> [SYS_LOG] SCAN_SUCCESS."
 }
 
 kingpin() {
