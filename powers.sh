@@ -1,61 +1,68 @@
 #!/bin/bash
+# powers.sh - THE DAILY PLANET RECONNAISSANCE ENGINE
 
-# --- METROPOLIS PATHING ---
-# Ensures the terminal can find tools installed in the temporary directory
+# 1. SETUP: Ensure our environment can see the tools in the /tmp/bin folder
 export PATH=$PATH:/tmp/bin
 export GO111MODULE=on
 
-# --- MODULE: OBSERVER ---
-# Passive reconnaissance to find subdomains while respecting scope
+# 2. MODULE: OBSERVER (Passive Discovery)
 observer() {
     local target=$1
-    echo ">> [OBSERVER] SCANNING DIGITAL HORIZON FOR: $target"
+    echo ">> [SYS_LOG] INITIALIZING PASSIVE RECONNAISSANCE ON: $target"
     
     if [ -z "$OUT_SCOPE" ]; then
         subfinder -d "$target" -silent
     else
-        # Filter out domains listed in the OUT_SCOPE variable
         subfinder -d "$target" -silent | grep -vE "${OUT_SCOPE//, /|}"
     fi
-    
-    echo ">> [OBSERVER] PASSIVE SCAN COMPLETE."
+    echo ">> [SYS_LOG] PASSIVE SCAN COMPLETE."
 }
 
-# --- MODULE: KINGPIN ---
-# Identifies live web assets and filters for high-value targets
+# 3. MODULE: KINGPIN (Live Asset Mapping)
 kingpin() {
     local target=$1
-    echo ">> [KINGPIN] PEERING THROUGH SURFACE FOR LIVE ASSETS..."
+    echo ">> [SYS_LOG] MAPPING LIVE ATTACK SURFACE FOR: $target"
     
     if [ -z "$OUT_SCOPE" ]; then
         subfinder -d "$target" -silent | httpx -silent -title -sc -td
     else
         subfinder -d "$target" -silent | grep -vE "${OUT_SCOPE//, /|}" | httpx -silent -title -sc -td
     fi
-    
-    echo ">> [KINGPIN] LIVE ASSETS MAPPED."
+    echo ">> [SYS_LOG] ASSET MAPPING CONCLUDED."
 }
 
-# --- MODULE: AUTOMATED HUNT ---
-# Full-scale automated vulnerability scan using Nuclei
+# 4. MODULE: AUTOMATED HUNT (Vulnerability Assessment)
 automated_hunt() {
     local target=$1
-    echo ">> [PHANTOM_ZONE] ENGAGING FULL-STEALTH AUTOMATED HUNT..."
+    echo ">> [SYS_LOG] ENGAGING WATCHTOWER VULNERABILITY SCAN..."
     
+    # Ensure templates are ready for the hunt
+    nuclei -ut -silent
+    
+    # Executing the full chain
     if [ -z "$OUT_SCOPE" ]; then
-        subfinder -d "$target" -silent | httpx -silent | nuclei -silent -severity critical,high,medium
+        subfinder -d "$target" -silent | httpx -silent | nuclei -silent -severity info,low,medium,high,critical
     else
-        subfinder -d "$target" -silent | grep -vE "${OUT_SCOPE//, /|}" | httpx -silent | nuclei -silent -severity critical,high,medium
+        subfinder -d "$target" -silent | grep -vE "${OUT_SCOPE//, /|}" | httpx -silent | nuclei -silent -severity info,low,medium,high,critical
     fi
-    
-    echo ">> [PHANTOM_ZONE] HUNT CONCLUDED. CHECK LOGS FOR FINDINGS."
+    echo ">> [SYS_LOG] HUNT CONCLUDED."
 }
 
-# --- SYSTEM CHECK ---
-# A utility function to verify tool health
+# 5. DIAGNOSTIC: TOOL CHECK
+# Use this to verify if LexCorp has interfered with your installations
 sys_check() {
-    echo ">> [CHECK] VERIFYING KRYPTONIAN TOOLSET..."
+    echo ">> [SYS_DIAGNOSTIC] VERIFYING KRYPTONIAN ASSETS..."
     command -v subfinder >/dev/null 2>&1 && echo ">> subfinder: READY" || echo ">> subfinder: MISSING"
     command -v httpx >/dev/null 2>&1 && echo ">> httpx: READY" || echo ">> httpx: MISSING"
     command -v nuclei >/dev/null 2>&1 && echo ">> nuclei: READY" || echo ">> nuclei: MISSING"
 }
+
+# Handle command-line arguments
+# Usage: ./powers.sh [module_name] [target_domain]
+case "$1" in
+    observer) observer "$2" ;;
+    kingpin) kingpin "$2" ;;
+    automated_hunt) automated_hunt "$2" ;;
+    sys_check) sys_check ;;
+    *) echo ">> [ERR] UNKNOWN MODULE" ;;
+esac
