@@ -70,12 +70,10 @@ if not st.session_state['auth']:
     st.code(BANNER)
     st.write(">> [UPLINK_ESTABLISHED_METROPOLIS_HUB]")
     
-    # Login Row
     col1, col2 = st.columns([1, 5])
     with col1:
         st.write("Password:")
     with col2:
-        # Collapsed label to keep it looking like a CLI prompt
         pwd = st.text_input("", type="password", label_visibility="collapsed", key="login_pwd")
     
     if pwd:
@@ -101,24 +99,4 @@ with c2:
 ability = st.selectbox(">> SELECT_POWER", ["Observer", "Kingpin", "Automated Hunt"])
 
 if st.button(">> FILE_THE_STORY"):
-    with st.spinner(">> [BUSY] TYPING_REPORT..."):
-        try:
-            # Set environment for the shell script
-            os.environ["OUT_SCOPE"] = out_scope
-            os.environ["IN_SCOPE"] = in_scope
-            
-            # Map the selection to the bash function
-            mapping = {"Observer": "observer", "Kingpin": "kingpin", "Automated Hunt": "automated_hunt"}
-            cmd = f"source ./powers.sh && {mapping[ability]} {target}"
-            
-            # Execute
-            result = subprocess.check_output(cmd, shell=True, executable='/bin/bash', stderr=subprocess.STDOUT)
-            
-            st.markdown("### >> BREAKING_NEWS_RESULTS")
-            st.code(result.decode('utf-8'))
-            
-            # Export function
-            st.download_button("📥 EXPORT_TELETYPE", result.decode('utf-8'), f"DP_Log_{target}.txt")
-            
-        except Exception as e:
-            st.error(f">> [CRITICAL_FAILURE] LEX_LUTHER_INTERFERENCE: {str(e)}")
+    with st.spinner(">> [BUSY] TY
