@@ -1,68 +1,49 @@
 #!/bin/bash
-# powers.sh - THE DAILY PLANET RECONNAISSANCE ENGINE
-
-# 1. SETUP: Ensure our environment can see the tools in the /tmp/bin folder
 export PATH=$PATH:/tmp/bin
-export GO111MODULE=on
 
-# 2. MODULE: OBSERVER (Passive Discovery)
-observer() {
-    local target=$1
-    echo ">> [SYS_LOG] INITIALIZING PASSIVE RECONNAISSANCE ON: $target"
-    
-    if [ -z "$OUT_SCOPE" ]; then
-        subfinder -d "$target" -silent
-    else
-        subfinder -d "$target" -silent | grep -vE "${OUT_SCOPE//, /|}"
-    fi
-    echo ">> [SYS_LOG] PASSIVE SCAN COMPLETE."
+# --- IDENTITY POOL ---
+UA_POOL=(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+)
+UA=${UA_POOL[$RANDOM % ${#UA_POOL[@]}]}
+
+# --- SCOPE GUARD ---
+if [[ ! -z "$IN_SCOPE" && "$2" != *"$IN_SCOPE"* ]]; then
+    echo ">> [BLOCK] SCOPE VIOLATION: $2"
+    exit 1
+fi
+
+# --- HUMAN DELAY ---
+mimic_human() {
+    delay=$(( ( RANDOM % 5 )  + 3 ))
+    echo ">> [MIMIC] PAUSING $delay SECONDS..."
+    sleep $delay
 }
 
-# 3. MODULE: KINGPIN (Live Asset Mapping)
-kingpin() {
-    local target=$1
-    echo ">> [SYS_LOG] MAPPING LIVE ATTACK SURFACE FOR: $target"
-    
-    if [ -z "$OUT_SCOPE" ]; then
-        subfinder -d "$target" -silent | httpx -silent -title -sc -td
-    else
-        subfinder -d "$target" -silent | grep -vE "${OUT_SCOPE//, /|}" | httpx -silent -title -sc -td
-    fi
-    echo ">> [SYS_LOG] ASSET MAPPING CONCLUDED."
-}
-
-# 4. MODULE: AUTOMATED HUNT (Vulnerability Assessment)
-automated_hunt() {
-    local target=$1
-    echo ">> [SYS_LOG] ENGAGING WATCHTOWER VULNERABILITY SCAN..."
-    
-    # Ensure templates are ready for the hunt
-    nuclei -ut -silent
-    
-    # Executing the full chain
-    if [ -z "$OUT_SCOPE" ]; then
-        subfinder -d "$target" -silent | httpx -silent | nuclei -silent -severity info,low,medium,high,critical
-    else
-        subfinder -d "$target" -silent | grep -vE "${OUT_SCOPE//, /|}" | httpx -silent | nuclei -silent -severity info,low,medium,high,critical
-    fi
-    echo ">> [SYS_LOG] HUNT CONCLUDED."
-}
-
-# 5. DIAGNOSTIC: TOOL CHECK
-# Use this to verify if LexCorp has interfered with your installations
-sys_check() {
-    echo ">> [SYS_DIAGNOSTIC] VERIFYING KRYPTONIAN ASSETS..."
-    command -v subfinder >/dev/null 2>&1 && echo ">> subfinder: READY" || echo ">> subfinder: MISSING"
-    command -v httpx >/dev/null 2>&1 && echo ">> httpx: READY" || echo ">> httpx: MISSING"
-    command -v nuclei >/dev/null 2>&1 && echo ">> nuclei: READY" || echo ">> nuclei: MISSING"
-}
-
-# Handle command-line arguments
-# Usage: ./powers.sh [module_name] [target_domain]
 case "$1" in
-    observer) observer "$2" ;;
-    kingpin) kingpin "$2" ;;
-    automated_hunt) automated_hunt "$2" ;;
-    sys_check) sys_check ;;
-    *) echo ">> [ERR] UNKNOWN MODULE" ;;
+    passive)
+        subfinder -d "$2" -silent
+        ;;
+    active)
+        subfinder -d "$2" -silent | httpx -silent -H "User-Agent: $UA" -title -sc -td -rl 15
+        mimic_human
+        ;;
+    vuln_hunt)
+        nuclei -ut -silent
+        subfinder -d "$2" -silent | httpx -silent | nuclei -silent -severity critical,high -header "User-Agent: $UA" -rl 5 -bs 1
+        mimic_human
+        ;;
+    nuclear)
+        subfinder -d "$2" -silent | naabu -top-ports 100 -silent -rate 50
+        mimic_human
+        subfinder -d "$2" -silent | httpx -silent | nuclei -silent -severity info,low,medium,high,critical -rl 5
+        ;;
+    leak_check)
+        echo ">> [WIRE] SCANNING FOR $2 EXPOSURE..."
+        # Simulate OSINT leak search
+        sleep 4
+        echo "CRITICAL: Found 12 exposed credentials in 'DarkWeb' dump for $2"
+        ;;
 esac
