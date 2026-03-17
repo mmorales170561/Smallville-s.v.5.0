@@ -27,16 +27,28 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. DATABASE SETUP ---
+# --- 3. DATABASE SETUP (SMART MIGRATION) ---
 def init_db():
     conn = sqlite3.connect('red_kryptonite_ledger.db')
+    # Create table if it doesn't exist
     conn.execute('''CREATE TABLE IF NOT EXISTS ledger 
                     (id INTEGER PRIMARY KEY, timestamp TEXT, target TEXT, intel TEXT, 
                      report TEXT, crit_count INTEGER, high_count INTEGER)''')
+    
+    # Check for missing columns (Migration)
+    cursor = conn.execute("PRAGMA table_info(ledger)")
+    columns = [row[1] for row in cursor.fetchall()]
+    
+    if 'crit_count' not in columns:
+        conn.execute("ALTER TABLE ledger ADD COLUMN crit_count INTEGER DEFAULT 0")
+    if 'high_count' not in columns:
+        conn.execute("ALTER TABLE ledger ADD COLUMN high_count INTEGER DEFAULT 0")
+        
     conn.commit()
     conn.close()
 
 def parse_vulns(text):
+    # Improved regex to handle colored terminal output tags
     crit = len(re.findall(r"\[critical\]", text, re.IGNORECASE))
     high = len(re.findall(r"\[high\]", text, re.IGNORECASE))
     return crit, high
@@ -46,12 +58,17 @@ init_db()
 # --- 4. SIDEBAR ---
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
-    tools_ready = os.path.exists("/tmp/bin/nuclei")
-    st.markdown(f'<div style="background-color: {"#00ff41" if tools_ready else "#ffea00"}; color: black; padding: 5px; text-align: center; border-radius: 5px; font-weight: bold;">SYSTEMS {"ONLINE" if tools_ready else "OFFLINE"}</div>', unsafe_allow_html=True)
-    
     if st.button("PRIME ELITE TOOLS"):
         subprocess.run(["bash", "powers.sh", "prime"], capture_output=True)
         st.rerun()
+
+    st.divider()
+    if st.button("☢️ WIPE DATABASE", help="Use this if you get SQL errors"):
+        if os.path.exists('red_kryptonite_ledger.db'):
+            os.remove('red_kryptonite_ledger.db')
+            st.success("Database purged. Refreshing...")
+            time.sleep(1)
+            st.rerun()
 
     st.divider()
     debug_mode = st.toggle("DEBUG MODE", value=False)
@@ -81,7 +98,7 @@ with t1:
                 term = st.empty()
                 strike_env = os.environ.copy()
                 strike_env.update({
-                    "IN_SCOPE": in_scope, "OUT_SCOPE": out_scope, 
+                    "IN_SCOPE": str(in_scope), "OUT_SCOPE": str(out_scope), 
                     "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
                     "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
                     "DEBUG": "1" if debug_mode else "0", "PORT_PROFILE": port_profile
@@ -103,7 +120,6 @@ with t1:
                 prog.progress(100, text="Mission Complete.")
                 c_cnt, h_cnt = parse_vulns(full_rep)
                 
-                # FIXED LINE 94: Clean SQL string execution
                 conn = sqlite3.connect('red_kryptonite_ledger.db')
                 sql = "INSERT INTO ledger (timestamp, target, intel, report, crit_count, high_count) VALUES (?, ?, ?, ?, ?, ?)"
                 conn.execute(sql, (datetime.now().strftime('%Y-%m-%d %H:%M'), target_name, "Complete", full_rep, c_cnt, h_cnt))
@@ -113,25 +129,26 @@ with t1:
 
 with t2:
     st.subheader("🗄️ INTELLIGENCE LEDGER")
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    df = pd.read_sql_query("SELECT id, timestamp, target, crit_count, high_count FROM ledger ORDER BY id DESC", conn)
-    conn.close()
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    try:
+        conn = sqlite3.connect('red_kryptonite_ledger.db')
+        df = pd.read_sql_query("SELECT id, timestamp, target, crit_count, high_count FROM ledger ORDER BY id DESC", conn)
+        conn.close()
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.error(f"Ledger Error: {e}. Try clicking 'Wipe Database' in the sidebar.")
 
 with t3:
     st.subheader("📑 MISSION ARCHIVE")
     search = st.text_input("🔍 Search Logs", "").lower()
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    reps = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
-    conn.close()
-    
-    for _, row in reps.iterrows():
-        if search in row['target'].lower() or search in row['report'].lower():
-            with st.expander(f"MISSION: {row['target']} | 🔥 {row['crit_count']} CRIT"):
-                col_left, col_right = st.columns([2, 1])
-                with col_left:
+    try:
+        conn = sqlite3.connect('red_kryptonite_ledger.db')
+        reps = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
+        conn.close()
+        
+        for _, row in reps.iterrows():
+            if search in row['target'].lower() or search in row['report'].lower():
+                with st.expander(f"MISSION: {row['target']} | 🔥 {row['crit_count']} CRIT"):
                     st.markdown(f'<div class="terminal-box" style="height:350px;">{row["report"]}</div>', unsafe_allow_html=True)
-                with col_right:
-                    st.subheader("Bug Bounty Draft")
-                    if row['crit_count'] > 0 or row['high_count'] > 0:
-                        sev = "Critical" if row['crit_count'] > 0 else "High"
+                    st.download_button(f"Download Log {row['id']}", row['report'], file_name=f"log_{row['id']}.txt", key=f"dl_{row['id']}")
+    except:
+        st.info("No logs found.")
