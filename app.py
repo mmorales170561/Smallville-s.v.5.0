@@ -1,5 +1,6 @@
 import streamlit as st
 import subprocess, os, requests, zipfile, tarfile, io, shutil
+import pandas as pd
 from datetime import datetime
 
 # --- 1. INITIALIZE ---
@@ -10,21 +11,21 @@ BIN_PATH = "/tmp/smallville_bin"
 SCRIPT_PATH = os.path.join(os.getcwd(), "powers.sh")
 
 if 'logs' not in st.session_state:
-    st.session_state.logs = ">> SYSTEM READY. CONFIGURE SCOPE AND FIRE."
-if 'oob_url' not in st.session_state:
-    st.session_state.oob_url = "Click 'Generate OOB' in Sidebar"
+    st.session_state.logs = ">> SYSTEM READY. CONFIGURE PHASES AND FIRE."
+if 'vuln_data' not in st.session_state:
+    st.session_state.vuln_data = []
 
-# --- 3. KRYPTONIAN UI STYLING ---
+# --- 3. UI STYLING ---
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; }
     .terminal-box { 
         background-color: #000; border: 1px solid #ff0000; padding: 15px; 
         color: #ff0000; font-family: 'Courier New', monospace;
-        white-space: pre-wrap; height: 500px; overflow-y: auto; font-size: 12px;
+        white-space: pre-wrap; height: 450px; overflow-y: auto; font-size: 12px;
         box-shadow: inset 0 0 15px rgba(255,0,0,0.3); border-radius: 5px;
     }
-    .scope-box { border: 1px solid #444; padding: 10px; border-radius: 5px; background: #111; }
+    .phase-label { color: #00ff41; font-weight: bold; font-size: 14px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -72,53 +73,52 @@ with st.sidebar:
     if st.button("🔴 HARD RESET", use_container_width=True):
         if os.path.exists(BIN_PATH): shutil.rmtree(BIN_PATH)
         st.session_state.logs = ">> SYSTEM WIPED."
+        st.session_state.vuln_data = []
         st.rerun()
     
     if st.button("PRIME GOD-MODE TOOLS", use_container_width=True):
         prime_armory()
 
     st.divider()
-    st.subheader("📡 OOB LISTENER")
-    if st.button("GENERATE OOB CALLBACK"):
-        st.session_state.oob_url = f"https://{os.urandom(4).hex()}.oast.me"
-    st.code(st.session_state.oob_url)
-
-    st.divider()
-    st.subheader("⚡ PHASES")
-    p1 = st.toggle("P1: CEREBRO (Recon)", True)
-    p2 = st.toggle("P2: SHADOW (Alive)", True)
-    p3 = st.toggle("P3: KATANA (Crawl)", True)
-    p4 = st.toggle("P4: STRIKE (Exploit)", True)
+    st.subheader("⚡ TACTICAL PHASES")
+    p1 = st.toggle("P1: CEREBRO (Subdomain)", True)
+    p2 = st.toggle("P2: SHADOW (Alive Check)", True)
+    p3 = st.toggle("P3: KATANA (Deep Crawl)", True)
+    p4 = st.toggle("P4: STRIKE (Vuln Scan)", True)
+    p5 = st.toggle("P5: ARCHITECT (GitHub)", False)
+    p6 = st.toggle("P6: OLYMPUS (Custom)", False)
+    
     st.divider()
     force_root = st.toggle("🚀 FORCE ROOT SCAN", False)
     stealth = st.toggle("🕵️ STEALTH MODE", True)
 
 # --- 6. MAIN HUD ---
 st.title("SUPER//MAN: GOD-MODE HUD")
-col_in, col_term = st.columns([1, 2])
+col_in, col_term = st.columns([1.1, 2])
 
 with col_in:
     st.subheader("Mission Brief")
-    tn = st.text_input("🎯 MISSION NAME", f"Mission_{datetime.now().strftime('%m%d')}")
+    tn = st.text_input("🎯 MISSION NAME", f"S.V_{datetime.now().strftime('%H%M')}")
     ru = st.text_input("🔗 ROOT URL", "x.com")
+    gh = st.text_input("🐙 GITHUB REPO URL (For P5)")
     
-    st.markdown('<div class="scope-box">', unsafe_allow_html=True)
-    is_scope = st.text_area("✓ IN-SCOPE (Wildcards allowed)", "x.com\n*.x.com", height=60)
-    os_scope = st.text_area("✗ OUT-SCOPE (Exclude these)", "api.x.com\nprod.x.com", height=60)
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.expander("🌐 SCOPE BOUNDARIES", expanded=True):
+        is_scope = st.text_area("✓ IN-SCOPE", "x.com", height=60)
+        os_scope = st.text_area("✗ OUT-SCOPE", "api.x.com", height=60)
     
     if st.button("FIRE RED KRYPTONITE GUN", type="primary", use_container_width=True):
         st.session_state.logs = f"--- MISSION START: {tn} ---\n"
+        st.session_state.vuln_data = [] # Reset for new run
+        
         env = os.environ.copy()
         env.update({
             "PATH": f"{BIN_PATH}:{env.get('PATH', '')}",
             "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
             "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
+            "RUN_P5": "1" if p5 else "0", "RUN_P6": "1" if p6 else "0",
             "FORCE_ROOT": "1" if force_root else "0",
             "RUN_STEALTH": "1" if stealth else "0",
-            "OUT_SCOPE": os_scope,
-            "IN_SCOPE": is_scope,
-            "OOB_URL": st.session_state.oob_url
+            "OUT_SCOPE": os_scope, "GH_REPO": gh
         })
         
         subprocess.run(["chmod", "+x", SCRIPT_PATH])
@@ -129,11 +129,19 @@ with col_in:
             for line in iter(proc.stdout.readline, ""):
                 st.session_state.logs += line
                 term_placeholder.markdown(f'<div class="terminal-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
+                
+                # Live Parsing for Dashboard
+                if "[critical]" in line.lower() or "[high]" in line.lower() or "[medium]" in line.lower():
+                    st.session_state.vuln_data.append(line.strip())
             proc.wait()
 
-    if st.download_button("💾 SAVE MISSION REPORT", st.session_state.logs, file_name=f"{tn}_report.md"):
-        st.success("Report Ready!")
-
 with col_term:
+    # --- VULNERABILITY DASHBOARD ---
+    if st.session_state.vuln_data:
+        st.subheader("⚠️ TACTICAL FINDINGS")
+        st.table(pd.DataFrame(st.session_state.vuln_data, columns=["Vulnerability Discovery"]))
+    
     if 'term_placeholder' not in locals():
         st.markdown(f'<div class="terminal-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
+    
+    st.download_button("💾 EXPORT INTEL", st.session_state.logs, file_name=f"{tn}_INTEL.md")
