@@ -1,5 +1,6 @@
 import streamlit as st
 import subprocess, os, requests, zipfile, tarfile, io, shutil
+from datetime import datetime
 
 # --- 1. INITIALIZE ---
 st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
@@ -9,7 +10,7 @@ BIN_PATH = "/tmp/smallville_bin"
 SCRIPT_PATH = os.path.join(os.getcwd(), "powers.sh")
 
 if 'logs' not in st.session_state:
-    st.session_state.logs = ">> SYSTEM READY. PRIME ARMORY TO BEGIN."
+    st.session_state.logs = ">> SYSTEM READY. CONFIGURE SCOPE AND FIRE."
 if 'oob_url' not in st.session_state:
     st.session_state.oob_url = "Click 'Generate OOB' in Sidebar"
 
@@ -20,17 +21,14 @@ st.markdown("""
     .terminal-box { 
         background-color: #000; border: 1px solid #ff0000; padding: 15px; 
         color: #ff0000; font-family: 'Courier New', monospace;
-        white-space: pre-wrap; height: 550px; overflow-y: auto; font-size: 12px;
+        white-space: pre-wrap; height: 500px; overflow-y: auto; font-size: 12px;
         box-shadow: inset 0 0 15px rgba(255,0,0,0.3); border-radius: 5px;
     }
-    .oob-box { 
-        background: #111; border: 1px dashed #00ff41; padding: 10px; 
-        color: #00ff41; font-size: 14px; text-align: center; margin-bottom: 10px;
-    }
+    .scope-box { border: 1px solid #444; padding: 10px; border-radius: 5px; background: #111; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. THE UNIVERSAL LOADER ---
+# --- 4. ARMORY LOADER ---
 def prime_armory():
     URLS = {
         "subfinder": "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip",
@@ -39,10 +37,10 @@ def prime_armory():
         "katana": "https://github.com/projectdiscovery/katana/releases/download/v1.1.0/katana_1.1.0_linux_amd64.zip"
     }
     os.makedirs(BIN_PATH, exist_ok=True)
-    status_bar = st.sidebar.empty()
+    status = st.sidebar.empty()
     for name, url in URLS.items():
         try:
-            status_bar.info(f"Unlocking {name}...")
+            status.info(f"Unlocking {name}...")
             r = requests.get(url, timeout=30)
             data = io.BytesIO(r.content)
             target = os.path.join(BIN_PATH, name)
@@ -66,7 +64,7 @@ def prime_armory():
                 os.chmod(target, 0o755)
                 st.sidebar.success(f"✓ {name}")
         except Exception as e: st.sidebar.error(f"Err {name}: {e}")
-    status_bar.empty()
+    status.empty()
 
 # --- 5. SIDEBAR ---
 with st.sidebar:
@@ -82,17 +80,15 @@ with st.sidebar:
     st.divider()
     st.subheader("📡 OOB LISTENER")
     if st.button("GENERATE OOB CALLBACK"):
-        # Simple placeholder logic for OOB generation
         st.session_state.oob_url = f"https://{os.urandom(4).hex()}.oast.me"
     st.code(st.session_state.oob_url)
-    st.caption("Use this for manual Blind SSRF/RCE tests.")
 
     st.divider()
     st.subheader("⚡ PHASES")
-    p1 = st.toggle("P1: CEREBRO", True)
-    p2 = st.toggle("P2: SHADOW", True)
-    p3 = st.toggle("P3: KATANA", True)
-    p4 = st.toggle("P4: STRIKE", True)
+    p1 = st.toggle("P1: CEREBRO (Recon)", True)
+    p2 = st.toggle("P2: SHADOW (Alive)", True)
+    p3 = st.toggle("P3: KATANA (Crawl)", True)
+    p4 = st.toggle("P4: STRIKE (Exploit)", True)
     st.divider()
     force_root = st.toggle("🚀 FORCE ROOT SCAN", False)
     stealth = st.toggle("🕵️ STEALTH MODE", True)
@@ -103,9 +99,13 @@ col_in, col_term = st.columns([1, 2])
 
 with col_in:
     st.subheader("Mission Brief")
-    tn = st.text_input("🎯 MISSION NAME", "Operation Smallville")
+    tn = st.text_input("🎯 MISSION NAME", f"Mission_{datetime.now().strftime('%m%d')}")
     ru = st.text_input("🔗 ROOT URL", "x.com")
-    os_scope = st.text_area("✗ OUT-SCOPE (Exclude these domains)", height=100)
+    
+    st.markdown('<div class="scope-box">', unsafe_allow_html=True)
+    is_scope = st.text_area("✓ IN-SCOPE (Wildcards allowed)", "x.com\n*.x.com", height=60)
+    os_scope = st.text_area("✗ OUT-SCOPE (Exclude these)", "api.x.com\nprod.x.com", height=60)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     if st.button("FIRE RED KRYPTONITE GUN", type="primary", use_container_width=True):
         st.session_state.logs = f"--- MISSION START: {tn} ---\n"
@@ -117,6 +117,7 @@ with col_in:
             "FORCE_ROOT": "1" if force_root else "0",
             "RUN_STEALTH": "1" if stealth else "0",
             "OUT_SCOPE": os_scope,
+            "IN_SCOPE": is_scope,
             "OOB_URL": st.session_state.oob_url
         })
         
@@ -129,6 +130,9 @@ with col_in:
                 st.session_state.logs += line
                 term_placeholder.markdown(f'<div class="terminal-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
             proc.wait()
+
+    if st.download_button("💾 SAVE MISSION REPORT", st.session_state.logs, file_name=f"{tn}_report.md"):
+        st.success("Report Ready!")
 
 with col_term:
     if 'term_placeholder' not in locals():
