@@ -1,4 +1,4 @@
-=import streamlit as st
+import streamlit as st
 import subprocess
 import os
 import sqlite3
@@ -37,6 +37,8 @@ if not st.session_state['auth']:
             if u == "clark_kent" and p == "superman":
                 st.session_state['auth'] = True
                 st.rerun()
+            else:
+                st.error("ACCESS DENIED.")
     st.stop()
 
 # --- SIDEBAR ARSENAL ---
