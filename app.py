@@ -16,7 +16,7 @@ SCRIPT = os.path.join(CWD, "powers.sh")
 if 'terminal_logs' not in st.session_state: 
     st.session_state['terminal_logs'] = "READY FOR ENGAGEMENT..."
 if 'vuln_counts' not in st.session_state:
-    st.session_state['vuln_counts'] = {"critical": 0, "high": 0, "medium": 0, "info": 0}
+    st.session_state['vuln_counts'] = {"critical": 0, "high": 0, "medium": 0}
 
 st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 
@@ -77,6 +77,7 @@ with st.sidebar:
     st.subheader("⚡ PHASE TOGGLES")
     p1 = st.toggle("P1: CEREBRO", value=True)
     p2 = st.toggle("P2: SHADOW", value=True)
+    p3 = st.toggle("P3: HOOK (Ports)", value=True)
     p4 = st.toggle("P4: STRIKE", value=True)
     p5 = st.toggle("P5: ARCHITECT", value=False)
     
@@ -85,7 +86,7 @@ with st.sidebar:
                        file_name=f"log_{datetime.now().strftime('%H%M%S')}.txt", use_container_width=True)
     if st.button("🗑️ PURGE FEED", use_container_width=True):
         st.session_state['terminal_logs'] = "READY..."
-        st.session_state['vuln_counts'] = {"critical": 0, "high": 0, "medium": 0, "info": 0}
+        st.session_state['vuln_counts'] = {"critical": 0, "high": 0, "medium": 0}
         st.rerun()
 
 # --- 5. MAIN HUD ---
@@ -98,7 +99,7 @@ with col_in:
     ru = st.text_input("🔗 ROOT URL", key="ru_val")
     gh_repo = st.text_input("🐙 GITHUB REPO URL", key="gh_val")
     
-    # --- VULN COUNTER DISPLAY ---
+    # --- VULN COUNTER ---
     st.write("**Live Vulnerability Tracker:**")
     v = st.session_state['vuln_counts']
     c1, c2, c3 = st.columns(3)
@@ -111,15 +112,15 @@ with col_in:
             st.error("ARMORY OFFLINE.")
         elif tn and (ru or gh_repo):
             st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} ---\n"
-            st.session_state['vuln_counts'] = {"critical": 0, "high": 0, "medium": 0, "info": 0}
+            st.session_state['vuln_counts'] = {"critical": 0, "high": 0, "medium": 0}
             term_placeholder = st.empty() 
             
             env = os.environ.copy()
             env.update({
                 "PATH": f"{BIN_PATH}:{env.get('PATH', '')}",
                 "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
-                "RUN_P4": "1" if p4 else "0", "RUN_P5": "1" if p5 else "0",
-                "GH_REPO": str(gh_repo)
+                "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
+                "RUN_P5": "1" if p5 else "0", "GH_REPO": str(gh_repo)
             })
             
             subprocess.run(["chmod", "+x", SCRIPT])
@@ -128,7 +129,6 @@ with col_in:
                                     text=True, env=env, bufsize=1)
             
             for line in iter(proc.stdout.readline, ""):
-                # Parse for Nuclei Severity Tags
                 lower_line = line.lower()
                 if "[critical]" in lower_line: st.session_state['vuln_counts']["critical"] += 1
                 elif "[high]" in lower_line: st.session_state['vuln_counts']["high"] += 1
@@ -136,13 +136,13 @@ with col_in:
                 
                 st.session_state['terminal_logs'] += line
                 term_placeholder.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
-                # Force update of counters during scan
-                st.rerun() if "[critical]" in lower_line or "[high]" in lower_line else None
             
             proc.stdout.close()
             proc.wait()
             st.success("Strike Complete.")
-            st.rerun() # Final refresh to show scores
+            st.rerun()
+        else:
+            st.warning("Enter Target and URL.")
 
 with col_term:
     st.subheader("Live Tactical Feed")
