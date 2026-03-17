@@ -3,56 +3,62 @@ import subprocess
 import os
 import time
 
-# --- AUTH & SUPERMAN THEME ENGINE ---
+# --- AUTH & SUPERMAN "ACTION COMICS" THEME ---
 if 'auth' not in st.session_state: st.session_state['auth'] = False
 
-st.set_page_config(page_title="METROPOLIS_WATCHTOWER", layout="wide")
+st.set_page_config(page_title="ACTION_COMICS_TERMINAL", layout="wide")
 
-# CSS for Superman Background and Phosphor UI
 st.markdown("""
     <style>
-    .stApp {
-        background: linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.85)), 
-                    url('https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=2070&auto=format&fit=crop');
-        background-size: cover;
-        background-attachment: fixed;
-        color: #33ff33; 
-        font-family: 'Courier New', monospace;
+    /* Primary Superman Palette */
+    .stApp { 
+        background-color: #003366; /* Deep Blue */
+        color: #FFFF00;            /* Bright Yellow */
+        font-family: 'Courier New', Courier, monospace;
     }
     
-    /* Shield-styled header */
-    h1 {
-        color: #ff0000 !important;
-        text-shadow: 2px 2px #0000ff;
+    /* Shield Headers */
+    h1, h2, h3 { 
+        color: #FF0000 !important; /* Superman Red */
         text-transform: uppercase;
-        border-bottom: 2px solid #ff0000;
+        border-bottom: 2px solid #FFFF00;
+        text-shadow: 2px 2px #000;
     }
 
-    /* Terminal Input Styling */
+    /* Terminal Inputs */
     input, textarea { 
-        background-color: rgba(0, 0, 0, 0.7) !important; 
-        color: #33ff33 !important; 
-        border: 1px solid #ff0000 !important; 
+        background-color: #002244 !important; 
+        color: #FFFF00 !important; 
+        border: 2px solid #FF0000 !important;
+        text-transform: uppercase;
+    }
+    
+    /* Labels */
+    label, p, .stMarkdown {
+        color: #FFFF00 !important;
+        font-weight: bold !important;
     }
 
-    /* Action Button - Superman Colors */
+    /* Action Buttons */
     .stButton>button { 
-        background-color: #0000ff; 
-        color: #ffffff; 
-        border: 2px solid #ff0000; 
+        background-color: #FF0000; 
+        color: #FFFF00; 
+        border: 2px solid #FFFF00;
         font-weight: bold;
-        width: 100%;
-        border-radius: 5px;
+        border-radius: 0;
+        box-shadow: 4px 4px #000;
     }
     .stButton>button:hover {
-        background-color: #ff0000;
-        color: #0000ff;
+        background-color: #FFFF00;
+        color: #FF0000;
+        border: 2px solid #FF0000;
     }
 
+    /* Code/Terminal Output */
     pre { 
-        background-color: rgba(0, 0, 0, 0.8) !important;
-        color: #33ff33 !important; 
-        border: 1px solid #0000ff !important;
+        background-color: #000000 !important; 
+        color: #33ff33 !important; /* Keep output green for high legibility */
+        border: 2px solid #FF0000 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -86,25 +92,27 @@ def provision_tools():
 # --- LOGIN GATE ---
 if not st.session_state['auth']:
     st.code(BANNER)
-    st.markdown("### 🔒 ACTION COMICS LOGIN")
-    pwd = st.text_input("Enter Keyphrase (Password):", type="password")
+    st.markdown("### 🛑 AUTHORIZATION REQUIRED")
+    pwd = st.text_input("PASSWORD:", type="password")
     if pwd == "superman":
         st.session_state['auth'] = True
         st.rerun()
+    elif pwd:
+        st.error(">> ACCESS DENIED: KRYPTONITE DETECTED")
     st.stop()
 
-# --- THE DAILY PLANET DESK ---
+# --- THE WATCHTOWER DESK ---
 provision_tools()
-st.title("🗞️ THE DAILY PLANET: WATCHTOWER")
+st.title("🗞️ DAILY PLANET: WATCHTOWER")
 st.code(BANNER)
 
 # 1. Targeting & Scope
 c1, c2 = st.columns(2)
 with c1:
     target = st.text_input(">> TARGET_HOST")
-    in_scope = st.text_area(">> SET_IN_SCOPE")
+    in_scope = st.text_area(">> IN_SCOPE")
 with c2:
-    out_scope = st.text_area(">> SET_OUT_SCOPE")
+    out_scope = st.text_area(">> OUT_SCOPE")
 
 # 2. Module Selection
 ability_label = st.selectbox(">> SELECT_POWER", ["Observer", "Kingpin", "Automated Hunt"])
@@ -112,13 +120,13 @@ mapping = {"Observer": "observer", "Kingpin": "kingpin", "Automated Hunt": "auto
 ability = mapping[ability_label]
 
 # 3. Execution
-if st.button(">> INITIALIZE_MISSION"):
+if st.button(">> INITIALIZE MISSION"):
     if not target:
-        st.error(">> [ERR] NO_TARGET_SPECIFIED")
+        st.error(">> ERR: NO TARGET SPECIFIED")
     else:
         console = st.empty()
         full_log = ""
-        with st.spinner(f">> [BUSY] {ability_label.upper()} ENGAGED..."):
+        with st.spinner(f">> BUSY: {ability_label.upper()} ENGAGED..."):
             try:
                 env = os.environ.copy()
                 env["PATH"] = f"/tmp/bin:{env.get('PATH', '')}"
@@ -135,12 +143,13 @@ if st.button(">> INITIALIZE_MISSION"):
 
                 for line in iter(process.stdout.readline, ''):
                     full_log += line
+                    # Keeps the terminal scroll look inside the colorful UI
                     console.code(full_log)
                 
                 process.wait()
                 
                 if full_log.strip():
-                    st.success(">> [SUCCESS] MISSION ACCOMPLISHED.")
-                    st.download_button("📥 DOWNLOAD_INTEL", full_log, f"DailyPlanet_{target}.txt")
+                    st.success(">> MISSION ACCOMPLISHED.")
+                    st.download_button("📥 DOWNLOAD INTEL", full_log, f"Intel_{target}.txt")
             except Exception as e:
-                st.error(f">> [FATAL] LEX_CORP_INTERFERENCE: {str(e)}")
+                st.error(f">> FATAL ERROR: {str(e)}")
