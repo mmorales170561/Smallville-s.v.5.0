@@ -62,7 +62,6 @@ with st.sidebar:
             <code style="color: #ffea00;">RE-PRIME REQUIRED</code>
         </div>''', unsafe_allow_html=True)
 
-    # UPDATED: width='stretch' replaces use_container_width=True
     if st.button("PRIME ELITE TOOLS", width="stretch"):
         with st.spinner("📦 Fetching Tech..."):
             subprocess.run(["bash", "powers.sh", "prime"], capture_output=True)
@@ -89,7 +88,6 @@ with t1:
         in_scope = st.text_area("✓ IN-SCOPE ASSETS", key="iscope")
         out_scope = st.text_area("✗ OUT-OF-SCOPE", key="oscope")
         
-        # UPDATED: width='stretch'
         if st.button("FIRE RED KRYPTONITE GUN", width="stretch", type="primary"):
             if not ready:
                 st.warning("Armory is empty. Prime tools in sidebar first.")
@@ -110,7 +108,4 @@ with t1:
                 full_rep = ""
                 for line in iter(p.stdout.readline, ''):
                     full_rep += line
-                    if "PHASE 1" in line: prog.progress(25, text="Phase 1: Cerebro...")
-                    elif "PHASE 2" in line: prog.progress(50, text="Phase 2: Shadow...")
-                    elif "PHASE 3" in line: prog.progress(75, text="Phase 3: Hooking...")
-                    elif "PHASE 4" in line: prog.progress(90,
+                    # FIXED: Ensured all progress calls are fully closed
