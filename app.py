@@ -3,102 +3,122 @@ import subprocess
 import os
 import sqlite3
 import pandas as pd
+import time
 from datetime import datetime
 
 # --- DATABASE ENGINE ---
 def init_db():
-    conn = sqlite3.connect('daily_planet_vault.db')
+    conn = sqlite3.connect('red_kryptonite_ledger.db')
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS vault 
-                 (id INTEGER PRIMARY KEY, timestamp TEXT, domain TEXT, 
-                  severity TEXT, finding TEXT, reporter TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS ledger 
+                 (id INTEGER PRIMARY KEY, timestamp TEXT, target TEXT, 
+                  threat_level TEXT, intel TEXT, duration_sec REAL)''')
     conn.commit()
     conn.close()
 
-def log_to_vault(domain, severity, finding):
-    conn = sqlite3.connect('daily_planet_vault.db')
+def log_to_ledger(target, threat, intel, duration_sec):
+    conn = sqlite3.connect('red_kryptonite_ledger.db')
     c = conn.cursor()
-    c.execute("INSERT INTO vault (timestamp, domain, severity, finding, reporter) VALUES (?,?,?,?,?)",
-              (datetime.now().strftime("%Y-%m-%d %H:%M"), domain, severity, finding, "Clark Kent"))
+    c.execute("INSERT INTO ledger (timestamp, target, threat_level, intel, duration_sec) VALUES (?,?,?,?,?)",
+              (datetime.now().strftime("%Y-%m-%d %H:%M"), target, threat, intel, duration_sec))
     conn.commit()
     conn.close()
 
-# --- THEME & STYLING ---
-st.set_page_config(page_title="Watchtower v8 | Daily Planet", layout="wide")
+# --- THEME: KRYPTONIAN ELITE ---
+st.set_page_config(page_title="Operation: Red Kryptonite | ELITE", layout="wide")
 init_db()
 
 st.markdown("""
     <style>
-    .stApp { background-color: #2b2d31; color: #e0e0e0; font-family: 'Georgia', serif; }
-    .masthead { text-align: center; border-bottom: 2px solid #555; padding: 20px; margin-bottom: 30px; }
-    .masthead h1 { font-family: 'Times New Roman', serif; font-size: 52px; color: #ffffff; margin: 0; text-transform: uppercase; }
-    .telemetry-card { background-color: #1a1b1e; border: 1px solid #4ade80; padding: 15px; border-radius: 5px; font-family: 'Courier New', monospace; color: #4ade80; height: 300px; overflow-y: auto; }
-    .stButton>button { background-color: #444; color: white; border-radius: 0; width: 100%; border: 1px solid #666; font-weight: bold; }
-    .stButton>button:hover { background-color: #ff0000; border-color: #ff0000; }
+    .stApp { background-color: #050505; color: #e0e0e0; font-family: 'Courier New', monospace; }
+    .welcome-hud { border-left: 5px solid #ff0000; padding: 20px; margin-bottom: 20px; background-color: #121416; }
+    .welcome-hud h1 { font-family: 'Georgia', serif; font-size: 32px; color: #ffffff; margin: 0; text-transform: uppercase; }
+    .sidebar-stat { background-color: #1a1a1a; border: 1px solid #444; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+    .stat-val { color: #ff0000; font-weight: bold; font-size: 20px; }
+    .telemetry-card { background-color: #000; border: 1px solid #ff0000; padding: 15px; color: #ff0000; height: 400px; overflow-y: auto; font-size: 12px; }
+    .stButton>button { background-color: #ff0000; color: white; border-radius: 0; border: none; font-weight: bold; width: 100%; }
+    .stButton>button:hover { background-color: #b30000; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOGIN GATE (SIMPLIFIED) ---
+# --- AUTHORIZATION GATE ---
 if 'auth' not in st.session_state: st.session_state['auth'] = False
 if not st.session_state['auth']:
-    st.markdown('<div class="masthead"><h1>THE DAILY PLANET</h1></div>', unsafe_allow_html=True)
-    _, col, _ = st.columns([1,1,1])
+    _, col, _ = st.columns([1, 1.5, 1])
     with col:
-        user = st.text_input("REPORTER ID")
-        pwd = st.text_input("ACCESS KEY", type="password")
-        if st.button("AUTHENTICATE"):
+        st.markdown("<h2 style='text-align:center; color:#ff0000;'>KRYPTONIAN ACCESS</h2>", unsafe_allow_html=True)
+        user = st.text_input("ID: clark_kent")
+        pwd = st.text_input("CRYPT: superman", type="password")
+        if st.button("AUTHORIZE"):
             if user == "clark_kent" and pwd == "superman":
                 st.session_state['auth'] = True
                 st.rerun()
     st.stop()
 
-st.markdown('<div class="masthead"><h1>THE DAILY PLANET</h1><p style="color:#aaa;">WATCHTOWER v8.0 | LIVE TELEMETRY FEED</p></div>', unsafe_allow_html=True)
+# --- SIDEBAR: NEURAL CORE & ARMORY ---
+with st.sidebar:
+    st.markdown("### 🧠 NEURAL CORE: EFFICIENCY")
+    conn = sqlite3.connect('red_kryptonite_ledger.db')
+    df_stats = pd.read_sql_query("SELECT * FROM ledger", conn)
+    conn.close()
+    
+    if not df_stats.empty:
+        total_crits = len(df_stats[df_stats['threat_level'] == 'CRITICAL'])
+        total_time_min = df_stats['duration_sec'].sum() / 60
+        cpm = total_crits / total_time_min if total_time_min > 0 else 0
+        st.markdown(f'<div class="sidebar-stat"><p style="margin:0; font-size:12px;">HUNT VELOCITY (CPM)</p><p class="stat-val">{cpm:.2f}</p></div>', unsafe_allow_html=True)
+    
+    st.markdown("---")
+    st.markdown("### 🛠️ KRYPTONIAN ARMORY")
+    if st.button("PRIME ELITE WEAPONS"):
+        with st.spinner("Fetching Binaries..."):
+            subprocess.run(["bash", "powers.sh", "prime"])
+        st.success("Armory: ELITE STATUS")
+    
+    st.markdown("---")
+    st.markdown("### 🕵️ SHADOW ARCHIVE")
+    wayback = st.toggle("WAYBACK LENS (Historical)", value=True)
+    secrets = st.toggle("SECRET SNIPER (Leaks)", value=False)
+    ports = st.toggle("GRAPPLING HOOK (Naabu)", value=False)
 
-tab1, tab2 = st.tabs(["🗞️ NEWSROOM INVESTIGATION", "🗄️ EDITORIAL VAULT"])
+# --- MAIN HUD ---
+st.markdown('<div class="welcome-hud"><h1>WELCOME SUPER//MAN</h1><p style="color:#ff0000; letter-spacing:2px;">NEURAL LINK: ELITE | SHADOW ARCHIVE: READY</p></div>', unsafe_allow_html=True)
 
-with tab1:
+t1, t2 = st.tabs(["🎯 ENGAGEMENT", "🗄️ TARGET LEDGER"])
+
+with t1:
     c1, c2 = st.columns([1, 2])
     with c1:
-        st.subheader("Field Parameters")
-        target = st.text_input("🎯 TARGET DOMAIN")
-        in_scope = st.text_input("✓ IN-SCOPE", value=target.split('.')[-2]+'.'+target.split('.')[-1] if '.' in target else "")
-        out_scope = st.text_input("🛑 OUT-OF-SCOPE")
-        power = st.selectbox("MISSION PROFILE", ["passive", "active", "vuln_hunt"])
+        st.subheader("Mission Brief")
+        target = st.text_input("🎯 TARGET")
+        in_scope = st.text_input("✓ IN-SCOPE", value=target.split('.')[-2] + '.' + target.split('.')[-1] if '.' in target else "")
         
-        if st.button("LAUNCH MISSION"):
-            if in_scope and in_scope in target and (not out_scope or out_scope not in target):
-                st.session_state['telemetry'] = ">> INITIALIZING UPLINK...\n"
-                telemetry_box = st.empty()
-                log_area = st.empty()
-                
+        if st.button("FIRE RED KRYPTONITE GUN"):
+            if in_scope and in_scope in target:
+                start_t = time.time()
+                status_box = st.empty()
                 env = os.environ.copy()
                 env["IN_SCOPE"] = in_scope
-                env["OUT_SCOPE"] = out_scope
+                env["WAYBACK"] = "1" if wayback else "0"
+                env["SECRETS"] = "1" if secrets else "0"
+                env["PORTS"] = "1" if ports else "0"
                 
-                p = subprocess.Popen(["bash", "powers.sh", power, target], 
+                p = subprocess.Popen(["bash", "powers.sh", "strike", target], 
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
                 
-                # Real-time Telemetry Loop
-                full_log = ""
+                telemetry = ""
                 for line in iter(p.stdout.readline, ''):
-                    # We look for the ">>" prefix in our bash script to update the Telemetry box
-                    if ">>" in line:
-                        st.session_state['telemetry'] += line
-                        telemetry_box.markdown(f'<div class="telemetry-card">{st.session_state["telemetry"]}</div>', unsafe_allow_html=True)
-                    else:
-                        full_log += line
-                        log_area.code(full_log)
-                    
+                    telemetry += line + "\n"
+                    status_box.markdown(f'<div class="telemetry-card">{telemetry}</div>', unsafe_allow_html=True)
                     if "CRITICAL" in line.upper():
-                        log_to_vault(target, "CRITICAL", line.strip())
+                        log_to_ledger(target, "CRITICAL", line.strip(), time.time() - start_t)
                 p.wait()
             else:
-                st.error("SCOPE BREACH DETECTED: MISSION ABORTED")
+                st.error("SCOPE BREACH.")
 
-with tab2:
-    st.subheader("The Editorial Vault")
-    conn = sqlite3.connect('daily_planet_vault.db')
-    df = pd.read_sql_query("SELECT * FROM vault ORDER BY id DESC", conn)
+with t2:
+    st.subheader("Intelligence Ledger")
+    conn = sqlite3.connect('red_kryptonite_ledger.db')
+    df = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
     conn.close()
-    if not df.empty:
-        st.dataframe(df, use_container_width=True)
+    st.dataframe(df, use_container_width=True)
