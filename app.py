@@ -3,18 +3,57 @@ import subprocess
 import os
 import time
 
-# --- AUTH & TERMINAL THEME ---
+# --- AUTH & SUPERMAN THEME ENGINE ---
 if 'auth' not in st.session_state: st.session_state['auth'] = False
 
-st.set_page_config(page_title="ACTION_COMICS_TERMINAL", layout="wide")
+st.set_page_config(page_title="METROPOLIS_WATCHTOWER", layout="wide")
 
+# CSS for Superman Background and Phosphor UI
 st.markdown("""
     <style>
-    .stApp { background-color: #000; color: #33ff33; font-family: 'Courier New', monospace; }
-    input, textarea { background-color: #000 !important; color: #33ff33 !important; border: 1px solid #33ff33 !important; }
-    pre { color: #33ff33 !important; font-size: 10px !important; line-height: 1.1 !important; }
-    .stButton>button { background-color: transparent; color: #33ff33; border: 1px solid #33ff33; width: 100%; border-radius: 0; }
-    .stButton>button:hover { background-color: #33ff33; color: #000; }
+    .stApp {
+        background: linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.85)), 
+                    url('https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=2070&auto=format&fit=crop');
+        background-size: cover;
+        background-attachment: fixed;
+        color: #33ff33; 
+        font-family: 'Courier New', monospace;
+    }
+    
+    /* Shield-styled header */
+    h1 {
+        color: #ff0000 !important;
+        text-shadow: 2px 2px #0000ff;
+        text-transform: uppercase;
+        border-bottom: 2px solid #ff0000;
+    }
+
+    /* Terminal Input Styling */
+    input, textarea { 
+        background-color: rgba(0, 0, 0, 0.7) !important; 
+        color: #33ff33 !important; 
+        border: 1px solid #ff0000 !important; 
+    }
+
+    /* Action Button - Superman Colors */
+    .stButton>button { 
+        background-color: #0000ff; 
+        color: #ffffff; 
+        border: 2px solid #ff0000; 
+        font-weight: bold;
+        width: 100%;
+        border-radius: 5px;
+    }
+    .stButton>button:hover {
+        background-color: #ff0000;
+        color: #0000ff;
+    }
+
+    pre { 
+        background-color: rgba(0, 0, 0, 0.8) !important;
+        color: #33ff33 !important; 
+        border: 1px solid #0000ff !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -30,7 +69,7 @@ BANNER = r"""
 @st.cache_resource
 def provision_tools():
     if not os.path.exists("/tmp/bin/subfinder"):
-        with st.status(">> [SYSTEM] INSTALLING KRYPTONIAN_TOOLSET..."):
+        with st.status(">> [SYSTEM] INITIALIZING KRYPTONIAN_TOOLSET..."):
             install_cmd = """
             mkdir -p /tmp/bin
             wget -q -O /tmp/go.tar.gz https://go.dev/dl/go1.22.0.linux-amd64.tar.gz
@@ -47,52 +86,45 @@ def provision_tools():
 # --- LOGIN GATE ---
 if not st.session_state['auth']:
     st.code(BANNER)
-    pwd = st.text_input("Password:", type="password")
+    st.markdown("### 🔒 ACTION COMICS LOGIN")
+    pwd = st.text_input("Enter Keyphrase (Password):", type="password")
     if pwd == "superman":
         st.session_state['auth'] = True
         st.rerun()
     st.stop()
 
-# --- THE DAILY PLANET DESK (RESTORED) ---
+# --- THE DAILY PLANET DESK ---
 provision_tools()
+st.title("🗞️ THE DAILY PLANET: WATCHTOWER")
 st.code(BANNER)
-st.write(">> WELCOME, AGENT_KENT. DAILY PLANET RECONNAISSANCE SUITE IS ONLINE.")
 
-# 1. Targeting & Scope Inputs
+# 1. Targeting & Scope
 c1, c2 = st.columns(2)
 with c1:
-    target = st.text_input(">> TARGET_HOST (e.g., example.com)")
+    target = st.text_input(">> TARGET_HOST")
     in_scope = st.text_area(">> SET_IN_SCOPE")
 with c2:
     out_scope = st.text_area(">> SET_OUT_SCOPE")
 
 # 2. Module Selection
 ability_label = st.selectbox(">> SELECT_POWER", ["Observer", "Kingpin", "Automated Hunt"])
-mapping = {
-    "Observer": "observer",
-    "Kingpin": "kingpin",
-    "Automated Hunt": "automated_hunt"
-}
+mapping = {"Observer": "observer", "Kingpin": "kingpin", "Automated Hunt": "automated_hunt"}
 ability = mapping[ability_label]
 
-# 3. Execution & Live Console
-if st.button(">> EXECUTE_WATCHTOWER_HUNT"):
+# 3. Execution
+if st.button(">> INITIALIZE_MISSION"):
     if not target:
         st.error(">> [ERR] NO_TARGET_SPECIFIED")
     else:
-        # Create an empty container for real-time log streaming
         console = st.empty()
         full_log = ""
-        
         with st.spinner(f">> [BUSY] {ability_label.upper()} ENGAGED..."):
             try:
-                # Set Environment
                 env = os.environ.copy()
                 env["PATH"] = f"/tmp/bin:{env.get('PATH', '')}"
                 env["OUT_SCOPE"] = out_scope
                 env["IN_SCOPE"] = in_scope
 
-                # Execute using Popen for live streaming
                 process = subprocess.Popen(
                     ["bash", "powers.sh", ability, target],
                     stdout=subprocess.PIPE,
@@ -101,7 +133,6 @@ if st.button(">> EXECUTE_WATCHTOWER_HUNT"):
                     env=env
                 )
 
-                # Stream the output line by line to the console
                 for line in iter(process.stdout.readline, ''):
                     full_log += line
                     console.code(full_log)
@@ -109,10 +140,7 @@ if st.button(">> EXECUTE_WATCHTOWER_HUNT"):
                 process.wait()
                 
                 if full_log.strip():
-                    st.success(">> [SUCCESS] SCAN COMPLETE.")
-                    st.download_button("📥 DOWNLOAD_DAILY_PLANET_REPORT", full_log, f"Report_{target}.txt")
-                else:
-                    st.warning(">> [WARN] NO DATA RETURNED. CHECK TARGET OR SCOPE.")
-
+                    st.success(">> [SUCCESS] MISSION ACCOMPLISHED.")
+                    st.download_button("📥 DOWNLOAD_INTEL", full_log, f"DailyPlanet_{target}.txt")
             except Exception as e:
-                st.error(f">> [CRITICAL_FAILURE]: {str(e)}")
+                st.error(f">> [FATAL] LEX_CORP_INTERFERENCE: {str(e)}")
