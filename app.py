@@ -61,15 +61,17 @@ if not st.session_state['auth']:
 # --- SIDEBAR: NEURAL CORE & ARMORY ---
 with st.sidebar:
     st.markdown("### 🧠 NEURAL CORE: EFFICIENCY")
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    df_stats = pd.read_sql_query("SELECT * FROM ledger", conn)
-    conn.close()
-    
-    if not df_stats.empty:
-        total_crits = len(df_stats[df_stats['threat_level'] == 'CRITICAL'])
-        total_time_min = df_stats['duration_sec'].sum() / 60
-        cpm = total_crits / total_time_min if total_time_min > 0 else 0
-        st.markdown(f'<div class="sidebar-stat"><p style="margin:0; font-size:12px;">HUNT VELOCITY (CPM)</p><p class="stat-val">{cpm:.2f}</p></div>', unsafe_allow_html=True)
+    try:
+        conn = sqlite3.connect('red_kryptonite_ledger.db')
+        df_stats = pd.read_sql_query("SELECT * FROM ledger", conn)
+        conn.close()
+        if not df_stats.empty:
+            total_crits = len(df_stats[df_stats['threat_level'] == 'CRITICAL'])
+            total_time_min = df_stats['duration_sec'].sum() / 60
+            cpm = total_crits / total_time_min if total_time_min > 0 else 0
+            st.markdown(f'<div class="sidebar-stat"><p style="margin:0; font-size:12px;">HUNT VELOCITY (CPM)</p><p class="stat-val">{cpm:.2f}</p></div>', unsafe_allow_html=True)
+    except:
+        st.info("Neural Core Warming Up...")
     
     st.markdown("---")
     st.markdown("### 🛠️ KRYPTONIAN ARMORY")
@@ -94,15 +96,44 @@ with t1:
     with c1:
         st.subheader("Mission Brief")
         target = st.text_input("🎯 TARGET", placeholder="example.com")
-        # Logic to set scope
-        if target:
-            scope_val = target.split('.')[-2] + '.' + target.split('.')[-1] if '.' in target else target
-        else:
-            scope_val = ""
-        in_scope = st.text_input("✓ IN-SCOPE", value=scope_val)
+        
+        # Determine default scope
+        default_scope = ""
+        if target and "." in target:
+            default_scope = ".".join(target.split(".")[-2:])
+        
+        in_scope = st.text_input("✓ IN-SCOPE", value=default_scope)
         
         if st.button("FIRE RED KRYPTONITE GUN"):
-            if in_scope and in_scope in target:
+            if in_scope and target and in_scope in target:
                 start_t = time.time()
                 status_box = st.empty()
-                env
+                
+                # --- CORRECT SCOPING OF ENV ---
+                strike_env = os.environ.copy()
+                strike_env["IN_SCOPE"] = str(in_scope)
+                strike_env["WAYBACK"] = "1" if wayback else "0"
+                strike_env["PORTS"] = "1" if ports else "0"
+                
+                p = subprocess.Popen(["bash", "powers.sh", "strike", target], 
+                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=strike_env)
+                
+                telemetry = ""
+                for line in iter(p.stdout.readline, ''):
+                    telemetry += line + "\n"
+                    status_box.markdown(f'<div class="telemetry-card">{telemetry}</div>', unsafe_allow_html=True)
+                    if "CRITICAL" in line.upper():
+                        log_to_ledger(target, "CRITICAL", line.strip(), time.time() - start_t)
+                p.wait()
+            else:
+                st.error("SCOPE BREACH OR TARGET MISSING.")
+
+with t2:
+    st.subheader("Intelligence Ledger")
+    try:
+        conn = sqlite3.connect('red_kryptonite_ledger.db')
+        df = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
+        conn.close()
+        st.dataframe(df, width='stretch')
+    except:
+        st.info("Waiting for first mission data...")
