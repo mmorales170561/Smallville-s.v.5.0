@@ -12,11 +12,9 @@ BIN_PATH = "/tmp/smallville_bin"
 CWD = os.getcwd()
 SCRIPT = os.path.join(CWD, "powers.sh")
 
-# Persistent state for logs and history
+# Persistent state for logs
 if 'terminal_logs' not in st.session_state: 
     st.session_state['terminal_logs'] = "READY FOR ENGAGEMENT..."
-if 'mission_history' not in st.session_state:
-    st.session_state['mission_history'] = []
 
 st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 
@@ -46,7 +44,7 @@ def check_armory():
 
 is_ready = check_armory()
 
-# --- 4. SIDEBAR (LOGGING INTEGRATED) ---
+# --- 4. SIDEBAR (MISSION LOGS RESTORED) ---
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
     
@@ -85,17 +83,17 @@ with st.sidebar:
     st.divider()
     st.subheader("📁 MISSION ARCHIVE")
     
-    # Download Current Session Logs
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Download Log Button
     st.download_button(
-        label="📥 DOWNLOAD CURRENT LOGS",
+        label="📥 DOWNLOAD LOGS (.TXT)",
         data=st.session_state['terminal_logs'],
-        file_name=f"smallville_log_{timestamp}.txt",
+        file_name=f"mission_log_{datetime.now().strftime('%H%M%S')}.txt",
         mime="text/plain",
         use_container_width=True
     )
     
-    if st.button("👁️ VIEW RAW LOG DATA", use_container_width=True):
+    if st.button("👁️ VIEW RAW DATA", use_container_width=True):
+        st.info("Raw Log Preview Below Main Feed")
         st.code(st.session_state['terminal_logs'], language="text")
 
     if st.button("🗑️ PURGE FEED", use_container_width=True):
@@ -108,16 +106,3 @@ col_in, col_term = st.columns([1, 2.2])
 
 with col_in:
     st.subheader("Mission Brief")
-    tn = st.text_input("🎯 TARGET NAME")
-    ru = st.text_input("🔗 ROOT DOMAIN")
-    is_scope = st.text_area("✓ IN-SCOPE", height=80)
-    
-    if st.button("FIRE RED KRYPTONITE GUN", type="primary", use_container_width=True):
-        if not is_ready:
-            st.error("ARMORY EMPTY. RUN PRIME FIRST.")
-        elif tn and ru:
-            start_time = datetime.now().strftime("%H:%M:%S")
-            st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} [{start_time}] ---\n"
-            term_display = st.empty()
-            
-            env = os.environ.
