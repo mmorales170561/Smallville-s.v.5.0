@@ -11,7 +11,7 @@ if BIN_PATH not in os.environ["PATH"]:
     os.environ["PATH"] = BIN_PATH + os.pathsep + os.environ["PATH"]
 
 if 'terminal_logs' not in st.session_state: 
-    st.session_state['terminal_logs'] = "READY FOR ENGAGEMENT..."
+    st.session_state['terminal_logs'] = "READY FOR MISSION..."
 
 st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 
@@ -42,14 +42,15 @@ with st.sidebar:
     if ready:
         st.markdown(f'<div class="status-panel online"><b>SYSTEMS ONLINE</b><br>{tool_count} TOOLS</div>', unsafe_allow_html=True)
     else:
-        st.error(f"SYSTEMS OFFLINE ({tool_count}/4)")
+        st.error(f"OFFLINE ({tool_count}/4)")
 
     if st.button("PRIME ELITE TOOLS", width="stretch"):
         with st.spinner("📥 Priming..."):
             os.makedirs(BIN_PATH, exist_ok=True)
             script_path = os.path.join(CWD, "powers.sh")
-            # SANITIZE: Remove Windows line endings if they exist
+            # Scrub Windows line endings and set permissions
             subprocess.run(["sed", "-i", "s/\\r$//", script_path])
+            subprocess.run(["chmod", "+x", script_path])
             subprocess.run(["bash", script_path, "prime"], capture_output=True)
             st.rerun()
 
@@ -73,8 +74,7 @@ with col_in:
     if st.button("FIRE RED KRYPTONITE GUN", width="stretch", type="primary"):
         script_path = os.path.join(CWD, "powers.sh")
         
-        # 1. PRE-FLIGHT SANITIZATION
-        # Forces the script to be executable and removes hidden Windows characters
+        # Pre-execution cleanup
         subprocess.run(["chmod", "+x", script_path])
         subprocess.run(["sed", "-i", "s/\\r$//", script_path])
 
@@ -87,21 +87,22 @@ with col_in:
             env.update({
                 "IN_SCOPE": str(is_scope), "OUT_SCOPE": str(os_scope),
                 "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
-                "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0"
+                "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
+                "PYTHONUNBUFFERED": "1" # Force environment to flush
             })
 
-            # Start Process with 'unbuffered' stdout
-            # We use /bin/bash explicitly
+            # RUNNING WITHOUT 'UNBUFFER' TO PREVENT CRASH
             proc = subprocess.Popen(
-                ["/bin/bash", "-c", f"unbuffer bash {script_path} strike {ru} {tn}"],
+                ["bash", script_path, "strike", str(ru), str(tn)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 env=env,
-                cwd=CWD
+                cwd=CWD,
+                bufsize=1 # Line-buffered for real-time output
             )
 
-            # --- THE STREAMING LOOP ---
+            # THE STREAMING LOOP
             while True:
                 line = proc.stdout.readline()
                 if not line and proc.poll() is not None:
