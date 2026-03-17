@@ -1,12 +1,3 @@
-import streamlit as st
-import subprocess, os, requests, zipfile, tarfile, io, shutil
-
-# --- 1. INITIALIZE ---
-st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
-BIN_PATH = "/tmp/smallville_bin"
-SCRIPT_PATH = os.path.join(os.getcwd(), "powers.sh")
-
-# --- 2. THE OMNI-EXTRACTOR ---
 def prime_armory():
     URLS = {
         "subfinder": "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip",
@@ -22,49 +13,44 @@ def prime_armory():
     for name, url in URLS.items():
         try:
             status_area.info(f"Downloading {name}...")
-            response = requests.get(url, stream=True)
+            response = requests.get(url, timeout=30)
             file_data = io.BytesIO(response.content)
-            
-            # Check for ZIP
+            target_file = os.path.join(BIN_PATH, name)
+
+            # --- STRATEGY 1: ZIP ---
             if zipfile.is_zipfile(file_data):
                 with zipfile.ZipFile(file_data) as z:
                     for f in z.namelist():
                         if f.endswith(name):
-                            with open(os.path.join(BIN_PATH, name), "wb") as b:
+                            with open(target_file, "wb") as b:
                                 b.write(z.read(f))
-            # Check for TAR.GZ
+            
+            # --- STRATEGY 2: TAR/GZIP ---
             else:
                 file_data.seek(0)
                 try:
-                    with tarfile.open(fileobj=file_data, mode="r:gz") as t:
+                    # Try as GZIP first, then as raw TAR
+                    mode = "r:gz" if url.endswith("gz") else "r:"
+                    with tarfile.open(fileobj=file_data, mode=mode) as t:
                         for member in t.getmembers():
                             if member.name.endswith(name):
-                                # Extract binary only, ignore paths
                                 content = t.extractfile(member).read()
-                                with open(os.path.join(BIN_PATH, name), "wb") as b:
+                                with open(target_file, "wb") as b:
                                     b.write(content)
-                except Exception as tar_err:
-                    st.sidebar.error(f"Failed to untar {name}: {tar_err}")
+                except:
+                    # --- STRATEGY 3: DIRECT BINARY ---
+                    # If all else fails, the download itself IS the binary
+                    file_data.seek(0)
+                    with open(target_file, "wb") as b:
+                        b.write(file_data.read())
             
-            os.chmod(os.path.join(BIN_PATH, name), 0o755)
-            st.sidebar.success(f"✓ {name} Ready")
-            
+            # Force Linux Execution Permissions
+            if os.path.exists(target_file):
+                os.chmod(target_file, 0o755)
+                st.sidebar.success(f"✓ {name} Loaded")
+            else:
+                st.sidebar.error(f"✗ {name} Not Found in Archive")
+                
         except Exception as e:
             st.sidebar.error(f"Err {name}: {e}")
     status_area.empty()
-
-# --- 3. SIDEBAR HUD ---
-with st.sidebar:
-    st.header("🛠️ WEAPON SYSTEM")
-    if st.button("PRIME GOD-MODE TOOLS", use_container_width=True):
-        prime_armory()
-    
-    if st.button("🔴 HARD RESET", use_container_width=True):
-        if os.path.exists(BIN_PATH): shutil.rmtree(BIN_PATH)
-        st.rerun()
-
-    st.divider()
-    # (Rest of your toggles for P1-P6)
-
-# --- 4. MAIN HUD ---
-# (Rest of your HUD code including the FIRE GUN button logic)
