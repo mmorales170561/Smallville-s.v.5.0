@@ -24,7 +24,7 @@ st.markdown("""
     .terminal-box { 
         background-color: #000; border: 1px solid #ff0000; padding: 20px; 
         color: #ff0000; font-family: 'Courier New', monospace;
-        white-space: pre-wrap; height: 580px; overflow-y: auto; font-size: 14px;
+        white-space: pre-wrap; height: 600px; overflow-y: auto; font-size: 14px;
         box-shadow: inset 0 0 20px rgba(255,0,0,0.5); border-radius: 5px;
     }
     .status-panel { padding: 10px; border-radius: 5px; text-align: center; border: 1px solid #333; margin-bottom: 10px; }
@@ -34,13 +34,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. ARMORY STATUS CHECK ---
+# --- 3. ARMORY STATUS ---
 def get_tools():
-    found = []
-    for t in ["subfinder", "httpx", "nuclei"]:
-        if os.path.exists(os.path.join(BIN_PATH, t)):
-            found.append(t)
-    return found
+    return [t for t in ["subfinder", "httpx", "nuclei"] if os.path.exists(os.path.join(BIN_PATH, t))]
 
 installed_tools = get_tools()
 is_ready = len(installed_tools) >= 3
@@ -48,7 +44,6 @@ is_ready = len(installed_tools) >= 3
 # --- 4. SIDEBAR ---
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
-    
     if is_ready:
         st.markdown('<div class="status-panel online"><b>SYSTEMS ONLINE</b></div>', unsafe_allow_html=True)
     else:
@@ -78,7 +73,7 @@ with st.sidebar:
     p2 = st.toggle("P2: SHADOW", value=True)
     p3 = st.toggle("P3: HOOK", value=True)
     p4 = st.toggle("P4: STRIKE", value=True)
-    p5 = st.toggle("P5: ARCHITECT (Repo Scan)", value=False)
+    p5 = st.toggle("P5: ARCHITECT", value=False)
     
     st.divider()
     st.subheader("📁 MISSION ARCHIVE")
@@ -99,14 +94,9 @@ with col_in:
     gh_repo = st.text_input("🐙 GITHUB REPO URL", placeholder="https://github.com/user/ai-agent", key="gh_val")
     
     col_s1, col_s2 = st.columns(2)
-    with col_s1:
-        is_scope = st.text_area("✓ IN-SCOPE", height=80, placeholder="*.target.com", key="is_val")
-    with col_s2:
-        os_scope = st.text_area("✗ OUT-SCOPE", height=80, placeholder="dev.target.com", key="os_val")
+    with col_s1: is_scope = st.text_area("✓ IN-SCOPE", height=80, key="is_val")
+    with col_s2: os_scope = st.text_area("✗ OUT-SCOPE", height=80, key="os_val")
     
-    # Weapon Status HUD
-    st.markdown("---")
-    st.write("**Weapon Status:**")
     status_html = ""
     for tool in ["subfinder", "httpx", "nuclei"]:
         color = "#00ff41" if tool in installed_tools else "#ff0000"
@@ -118,7 +108,8 @@ with col_in:
             st.error("SYSTEMS OFFLINE. PRIME ARMORY.")
         elif tn and (ru or gh_repo):
             st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} ---\n"
-            term_display = st.empty()
+            # The key change: We use st.empty() here to update the feed LIVE
+            term_placeholder = st.empty() 
             
             env = os.environ.copy()
             env.update({
@@ -131,18 +122,21 @@ with col_in:
             subprocess.run(["chmod", "+x", SCRIPT])
             proc = subprocess.Popen(["bash", SCRIPT, "strike", ru, tn], 
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
-                                    text=True, env=env)
+                                    text=True, env=env, bufsize=1)
             
-            while True:
-                line = proc.stdout.readline()
-                if not line and proc.poll() is not None: break
-                if line:
-                    st.session_state['terminal_logs'] += line
-                    term_display.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
+            # Streaming results directly into the terminal feed
+            for line in iter(proc.stdout.readline, ""):
+                st.session_state['terminal_logs'] += line
+                # Update the display immediately
+                term_placeholder.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
+            
+            proc.stdout.close()
+            proc.wait()
             st.success("Strike Complete.")
         else:
-            st.warning("Enter Target and either a URL or GitHub Repo.")
+            st.warning("Enter Target and URL.")
 
 with col_term:
     st.subheader("Live Tactical Feed")
-    st.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
+    # This acts as the container for the terminal box
+    term_display = st.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
