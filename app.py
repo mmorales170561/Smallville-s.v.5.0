@@ -3,72 +3,80 @@ import subprocess
 import os
 import time
 
-# --- AUTH & SUPERMAN "ACTION COMICS" THEME ---
+# --- AUTH & SUPERMAN "DAILY PLANET" THEME ---
 if 'auth' not in st.session_state: st.session_state['auth'] = False
 
-st.set_page_config(page_title="ACTION_COMICS_TERMINAL", layout="wide")
+st.set_page_config(page_title="DAILY_PLANET_ARCHIVE", layout="wide")
 
 st.markdown("""
     <style>
-    /* Primary Superman Palette */
+    /* Superman Newspaper Background */
     .stApp { 
-        background-color: #003366; /* Deep Blue */
-        color: #FFFF00;            /* Bright Yellow */
+        background: linear-gradient(rgba(0, 51, 102, 0.8), rgba(0, 51, 102, 0.8)), 
+                    url('http://googleusercontent.com/image_collection/image_retrieval/8297550412283012736_0');
+        background-size: cover;
+        background-attachment: fixed;
+        color: #FFFF00;
         font-family: 'Courier New', Courier, monospace;
     }
     
-    /* Shield Headers */
-    h1, h2, h3 { 
-        color: #FF0000 !important; /* Superman Red */
-        text-transform: uppercase;
-        border-bottom: 2px solid #FFFF00;
-        text-shadow: 2px 2px #000;
+    /* Styled Action Comics Header */
+    .action-header {
+        font-family: 'Courier New', monospace;
+        font-weight: 900;
+        font-size: 1.2vw;
+        line-height: 1.1;
+        white-space: pre;
+        background: linear-gradient(to right, #0000FF, #FF0000, #FFFF00);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        padding: 20px 0;
     }
 
-    /* Terminal Inputs */
+    /* Form Styling */
+    h1, h2, h3 { 
+        color: #FF0000 !important; 
+        text-transform: uppercase;
+        border-bottom: 2px solid #FFFF00;
+    }
+
     input, textarea { 
-        background-color: #002244 !important; 
+        background-color: rgba(0, 34, 68, 0.9) !important; 
         color: #FFFF00 !important; 
         border: 2px solid #FF0000 !important;
-        text-transform: uppercase;
     }
-    
-    /* Labels */
-    label, p, .stMarkdown {
+
+    label, p {
         color: #FFFF00 !important;
         font-weight: bold !important;
     }
 
-    /* Action Buttons */
     .stButton>button { 
         background-color: #FF0000; 
         color: #FFFF00; 
         border: 2px solid #FFFF00;
         font-weight: bold;
-        border-radius: 0;
         box-shadow: 4px 4px #000;
     }
-    .stButton>button:hover {
-        background-color: #FFFF00;
-        color: #FF0000;
-        border: 2px solid #FF0000;
-    }
 
-    /* Code/Terminal Output */
     pre { 
-        background-color: #000000 !important; 
-        color: #33ff33 !important; /* Keep output green for high legibility */
-        border: 2px solid #FF0000 !important;
+        background-color: rgba(0, 0, 0, 0.85) !important; 
+        color: #33ff33 !important; 
+        border: 1px solid #FF0000 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-BANNER = r"""
+# The New Styled Banner (HTML Gradient Version)
+BANNER_HTML = """
+<div class="action-header">
     ___  ____________________  _   __  __________  __  __________________
    /   |/ ____/_  __/  _/ __ \/ | / / / ____/ __ \/  |/  /  _/ ____/ ___/
   / /| / /     / /  / // / / /  |/ / / /   / / / / /|_/ // // /    \__ \ 
  / ___ / /___ / / _/ // /_/ / /|  / / /___/ /_/ / /  / // // /___ ___/ / 
 /_/  |_\____//_/ /___/\____/_/ |_/  \____/\____/_/  /_/___/\____//____/ 
+</div>
 """
 
 # --- AUTO-PROVISIONING ---
@@ -91,35 +99,30 @@ def provision_tools():
 
 # --- LOGIN GATE ---
 if not st.session_state['auth']:
-    st.code(BANNER)
-    st.markdown("### 🛑 AUTHORIZATION REQUIRED")
+    st.markdown(BANNER_HTML, unsafe_allow_html=True)
+    st.markdown("### 🛑 ACCESS RESTRICTED: DAILY PLANET PERSONNEL ONLY")
     pwd = st.text_input("PASSWORD:", type="password")
     if pwd == "superman":
         st.session_state['auth'] = True
         st.rerun()
-    elif pwd:
-        st.error(">> ACCESS DENIED: KRYPTONITE DETECTED")
     st.stop()
 
-# --- THE WATCHTOWER DESK ---
+# --- THE MAIN TERMINAL ---
 provision_tools()
-st.title("🗞️ DAILY PLANET: WATCHTOWER")
-st.code(BANNER)
+st.markdown(BANNER_HTML, unsafe_allow_html=True)
+st.title("🗞️ DAILY PLANET: THE WATCHTOWER")
 
-# 1. Targeting & Scope
 c1, c2 = st.columns(2)
 with c1:
     target = st.text_input(">> TARGET_HOST")
-    in_scope = st.text_area(">> IN_SCOPE")
+    in_scope = st.text_area(">> SET_IN_SCOPE")
 with c2:
-    out_scope = st.text_area(">> OUT_SCOPE")
+    out_scope = st.text_area(">> SET_OUT_SCOPE")
 
-# 2. Module Selection
 ability_label = st.selectbox(">> SELECT_POWER", ["Observer", "Kingpin", "Automated Hunt"])
 mapping = {"Observer": "observer", "Kingpin": "kingpin", "Automated Hunt": "automated_hunt"}
 ability = mapping[ability_label]
 
-# 3. Execution
 if st.button(">> INITIALIZE MISSION"):
     if not target:
         st.error(">> ERR: NO TARGET SPECIFIED")
@@ -143,13 +146,11 @@ if st.button(">> INITIALIZE MISSION"):
 
                 for line in iter(process.stdout.readline, ''):
                     full_log += line
-                    # Keeps the terminal scroll look inside the colorful UI
                     console.code(full_log)
                 
                 process.wait()
-                
                 if full_log.strip():
                     st.success(">> MISSION ACCOMPLISHED.")
-                    st.download_button("📥 DOWNLOAD INTEL", full_log, f"Intel_{target}.txt")
+                    st.download_button("📥 DOWNLOAD INTEL", full_log, f"DailyPlanet_{target}.txt")
             except Exception as e:
                 st.error(f">> FATAL ERROR: {str(e)}")
