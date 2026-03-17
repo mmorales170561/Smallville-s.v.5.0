@@ -62,7 +62,8 @@ with st.sidebar:
             <code style="color: #ffea00;">RE-PRIME REQUIRED</code>
         </div>''', unsafe_allow_html=True)
 
-    if st.button("PRIME ELITE TOOLS", use_container_width=True):
+    # UPDATED: width='stretch' replaces use_container_width=True
+    if st.button("PRIME ELITE TOOLS", width="stretch"):
         with st.spinner("📦 Fetching Tech..."):
             subprocess.run(["bash", "powers.sh", "prime"], capture_output=True)
             st.session_state["last_prime"] = datetime.now().strftime("%H:%M:%S")
@@ -71,10 +72,8 @@ with st.sidebar:
     st.divider()
     debug_mode = st.toggle("DEBUG MODE", value=False)
     st.header("⚡ PHASE TOGGLES")
-    p1 = st.toggle("P1: CEREBRO", True)
-    p2 = st.toggle("P2: SHADOW", True)
-    p3 = st.toggle("P3: HOOK", True)
-    p4 = st.toggle("P4: STRIKE", True)
+    p1, p2 = st.toggle("P1: CEREBRO", True), st.toggle("P2: SHADOW", True)
+    p3, p4 = st.toggle("P3: HOOK", True), st.toggle("P4: STRIKE", True)
     port_profile = st.selectbox("PORT PROFILE", ["Top 20 (Ghost)", "Top 100", "Top 1000"])
 
 # --- 5. MAIN HUD ---
@@ -90,7 +89,8 @@ with t1:
         in_scope = st.text_area("✓ IN-SCOPE ASSETS", key="iscope")
         out_scope = st.text_area("✗ OUT-OF-SCOPE", key="oscope")
         
-        if st.button("FIRE RED KRYPTONITE GUN", use_container_width=True, type="primary"):
+        # UPDATED: width='stretch'
+        if st.button("FIRE RED KRYPTONITE GUN", width="stretch", type="primary"):
             if not ready:
                 st.warning("Armory is empty. Prime tools in sidebar first.")
             elif root_url and target_name:
@@ -104,48 +104,13 @@ with t1:
                     "DEBUG": "1" if debug_mode else "0", "PORT_PROFILE": port_profile
                 })
                 
-                # --- FIXED LINE 105: PROPERLY CLOSED COMMAND ---
                 cmd = ["bash", "powers.sh", "strike", str(root_url), str(target_name)]
                 p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=strike_env, bufsize=1)
                 
                 full_rep = ""
                 for line in iter(p.stdout.readline, ''):
                     full_rep += line
-                    if "PHASE 1" in line: prog.progress(25, text="Phase 1: Cerebro Scanning...")
-                    elif "PHASE 2" in line: prog.progress(50, text="Phase 2: Shadow Archiving...")
-                    elif "PHASE 3" in line: prog.progress(75, text="Phase 3: Grappling Hook...")
-                    elif "PHASE 4" in line: prog.progress(90, text="Phase 4: Red Kryptonite Strike...")
-                    term_display.markdown(f'<div class="terminal-box">{full_rep}</div>', unsafe_allow_html=True)
-                
-                p.wait()
-                prog.progress(100, text="Mission Complete.")
-                c_cnt, h_cnt = parse_vulns(full_rep)
-                
-                conn = sqlite3.connect('red_kryptonite_ledger.db')
-                sql_q = """INSERT INTO ledger (timestamp, target, intel, report, crit_count, high_count) VALUES (?, ?, ?, ?, ?, ?)"""
-                conn.execute(sql_q, (datetime.now().strftime('%Y-%m-%d %H:%M'), target_name, "Complete", full_rep, c_cnt, h_cnt))
-                conn.commit()
-                conn.close()
-                st.rerun()
-
-    with col_term:
-        st.subheader("Live Terminal Output")
-        st.info("Awaiting command to fire...")
-
-with t2:
-    st.subheader("🗄️ INTELLIGENCE LEDGER")
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    df = pd.read_sql_query("SELECT id, timestamp, target, crit_count, high_count FROM ledger ORDER BY id DESC", conn)
-    conn.close()
-    st.dataframe(df, use_container_width=True, hide_index=True)
-
-with t3:
-    st.subheader("📑 MISSION ARCHIVE")
-    search = st.text_input("🔍 Search Logs", "").lower()
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    reps = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
-    conn.close()
-    for _, row in reps.iterrows():
-        if search in row['target'].lower() or search in row['report'].lower():
-            with st.expander(f"LOG: {row['target']} | 🔥 {row['crit_count']} CRITICAL"):
-                st.markdown(f'<div class="terminal-box" style="height:300px;">{row["report"]}</div>', unsafe_allow_html=True)
+                    if "PHASE 1" in line: prog.progress(25, text="Phase 1: Cerebro...")
+                    elif "PHASE 2" in line: prog.progress(50, text="Phase 2: Shadow...")
+                    elif "PHASE 3" in line: prog.progress(75, text="Phase 3: Hooking...")
+                    elif "PHASE 4" in line: prog.progress(90,
