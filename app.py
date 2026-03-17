@@ -2,7 +2,6 @@ import streamlit as st
 import subprocess
 import os
 import time
-from datetime import datetime
 
 # --- 1. ENVIRONMENT ---
 BIN_PATH = "/tmp/bin"
@@ -11,7 +10,7 @@ if BIN_PATH not in os.environ["PATH"]:
     os.environ["PATH"] = BIN_PATH + os.pathsep + os.environ["PATH"]
 
 if 'terminal_logs' not in st.session_state: 
-    st.session_state['terminal_logs'] = "READY FOR ENGAGEMENT..."
+    st.session_state['terminal_logs'] = "READY FOR MISSION..."
 
 st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 
@@ -71,24 +70,26 @@ with col_in:
     
     if st.button("FIRE RED KRYPTONITE GUN", width="stretch", type="primary"):
         script_path = os.path.join(CWD, "powers.sh")
-        subprocess.run(["chmod", "+x", script_path])
+        # Ensure script is sanitized every time
         subprocess.run(["sed", "-i", "s/\\r$//", script_path])
+        subprocess.run(["chmod", "+x", script_path])
 
         if tn and ru:
-            st.session_state['terminal_logs'] = f"--- DEBUG STRIKE INITIALIZED: {tn} ---\n"
+            st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} ---\n"
             term_display = st.empty()
             
             env = os.environ.copy()
             env["PATH"] = f"{BIN_PATH}:{env.get('PATH', '')}"
+            # Pass all UI toggles to the script
             env.update({
                 "IN_SCOPE": str(is_scope), "OUT_SCOPE": str(os_scope),
                 "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
                 "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0"
             })
 
-            # --- THE X-RAY FIX ---
-            # We add '-x' to the bash call. This prints EVERY command to stderr.
-            # Since we capture stderr, we will see EXACTLY where it stops.
+            # --- THE LOGIC FIX ---
+            # We call bash with '-x' to keep debugging on, and we use the 
+            # exact string "strike" to match your case statement.
             proc = subprocess.Popen(
                 ["/bin/bash", "-x", script_path, "strike", str(ru), str(tn)],
                 stdout=subprocess.PIPE,
@@ -108,15 +109,11 @@ with col_in:
                     term_display.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
             
             rc = proc.wait()
-            st.session_state['terminal_logs'] += f"\n[DEBUG] PROCESS ENDED WITH CODE: {rc}\n"
-            term_display.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
-            
-            if rc == 0:
+            if rc == 0 and "PHASE" in st.session_state['terminal_logs']:
                 st.success(f"Mission {tn} Complete.")
             else:
-                st.error(f"Strike failed with exit code {rc}. Check logs above.")
+                st.error("Strike bypassed or failed. Check logic in powers.sh.")
 
 with col_term:
     st.subheader("Live Tactical Feed")
     st.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
-    
