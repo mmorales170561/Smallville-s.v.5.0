@@ -1,52 +1,52 @@
 #!/bin/bash
+# --- SMALLVILLE S.V. 5.0 ENGINE ---
+# Optimized for Chromebook/Crostini Linux
+
 BIN_DIR="/tmp/bin"
 export PATH=$PATH:$BIN_DIR
+
+# --- DEBUG & OUTPUT ROUTING ---
+# If DEBUG=1 (set from app.py), we show errors. Otherwise, we hide noise.
 [[ "$DEBUG" == "1" ]] && ERR_OUT="/dev/stderr" || ERR_OUT="/dev/null"
 
 case "$1" in
     prime)
-        echo ">> [ARMORY] FETCHING WEAPONS..."
-        # Add your wget/unpack logic here for nuclei, subfinder, httpx, naabu, gau, mantra
+        echo ">> [ARMORY] INITIALIZING WEAPON CACHE..."
+        # This section ensures all binaries are executable
+        chmod +x $BIN_DIR/* 2>/dev/null
+        echo ">> [ARMORY] SYSTEMS CALIBRATED."
         ;;
-    strike)
-        # 1. SCOPE CLEANING
-        CLEAN_IN=$(echo "$IN_SCOPE" | tr ',' '\n' | tr ' ' '\n' | grep -v "^$")
-        RAW_LIST=$( (echo "$2"; echo "$CLEAN_IN") | sort -u | grep -v "^$" )
-        CLEAN_OUT=$(echo "$OUT_SCOPE" | tr ',' '\n' | tr ' ' '\n' | grep -v "^$")
-        [[ -n "$CLEAN_OUT" ]] && PATTERN=$(echo "$CLEAN_OUT" | paste -sd "|" -) && FINAL_LIST=$(echo "$RAW_LIST" | grep -v -E "$PATTERN") || FINAL_LIST="$RAW_LIST"
 
-        # PHASE 1: CEREBRO
+    strike)
+        TARGET_DOMAIN="$2"
+        MISSION_NAME="$3"
+        
+        echo ">> [INIT] LOCKING SEQUENCE FOR MISSION: $MISSION_NAME"
+        
+        # --- 0. SCOPE CLEANING & DEDUPLICATION ---
+        # Cleans up the input from the Streamlit text areas
+        CLEAN_IN=$(echo "$IN_SCOPE" | tr ',' '\n' | tr ' ' '\n' | grep -v "^$")
+        RAW_LIST=$( (echo "$TARGET_DOMAIN"; echo "$CLEAN_IN") | sort -u | grep -v "^$" )
+        
+        CLEAN_OUT=$(echo "$OUT_SCOPE" | tr ',' '\n' | tr ' ' '\n' | grep -v "^$")
+        if [ -n "$CLEAN_OUT" ]; then
+            PATTERN=$(echo "$CLEAN_OUT" | paste -sd "|" -)
+            FINAL_LIST=$(echo "$RAW_LIST" | grep -v -E "$PATTERN")
+        else
+            FINAL_LIST="$RAW_LIST"
+        fi
+
+        # --- PHASE 1: SCARLET CEREBRO (Passive Recon) ---
         if [ "$RUN_P1" == "1" ]; then
             echo ">> [PHASE 1] SCARLET CEREBRO START..."
-            echo "$FINAL_LIST" | $BIN_DIR/subfinder -silent 2>$ERR_OUT | $BIN_DIR/httpx -silent -title 2>$ERR_OUT
+            # Subfinder for subdomains -> httpx for live web servers
+            echo "$FINAL_LIST" | subfinder -silent 2>$ERR_OUT | httpx -silent -title 2>$ERR_OUT
+            echo ">> [PHASE 1] COMPLETE."
             sleep 1
         fi
 
-        # PHASE 2: SHADOW
+        # --- PHASE 2: SHADOW ARCHIVE (URL Discovery) ---
         if [ "$RUN_P2" == "1" ]; then
             echo ">> [PHASE 2] SHADOW ARCHIVE START..."
-            echo "$FINAL_LIST" | $BIN_DIR/gau --subs --threads 5 2>$ERR_OUT | head -n 10
-            sleep 1
-        fi
-
-        # PHASE 3: HOOK (FIXED FOR CHROMEBOOK)
-        if [ "$RUN_P3" == "1" ]; then
-            echo ">> [PHASE 3] GRAPPLING HOOK START..."
-            [[ "$PORT_PROFILE" == "Top 20 (Ghost)" ]] && P_VAL="-p 80,443,8080,8443,22,21" || P_VAL="-tp 100"
-            # Using -s c (Connect Scan) to bypass privileged socket errors
-            echo "$FINAL_LIST" | $BIN_DIR/naabu $P_VAL -s c -silent -rate 300 2>$ERR_OUT
-            sleep 1
-        fi
-
-        # PHASE 4: STRIKE
-        if [ "$RUN_P4" == "1" ]; then
-            echo ">> [PHASE 4] RED KRYPTONITE STRIKE START..."
-            LIVE=$(echo "$FINAL_LIST" | $BIN_DIR/httpx -silent 2>$ERR_OUT)
-            if [ -n "$LIVE" ]; then
-                echo "$LIVE" | $BIN_DIR/nuclei -silent -ni -severity critical,high 2>$ERR_OUT
-                echo "$LIVE" | $BIN_DIR/mantra -silent 2>$ERR_OUT
-            fi
-        fi
-        echo ">> [MISSION FINISHED] LOGS EXPORTED."
-        ;;
-esac
+            # gau fetches historical URLs from WayBack, AlienVault, etc.
+            echo "$FINAL_LIST" | gau --subs --threads 5 2>$ERR_OUT | head -n
