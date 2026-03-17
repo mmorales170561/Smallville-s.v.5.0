@@ -77,7 +77,7 @@ with st.sidebar:
     st.subheader("⚡ PHASE TOGGLES")
     p1 = st.toggle("P1: CEREBRO", value=True)
     p2 = st.toggle("P2: SHADOW", value=True)
-    p3 = st.toggle("P3: HOOK (Ports)", value=True)
+    p3 = st.toggle("P3: HOOK (Probe)", value=True)
     p4 = st.toggle("P4: STRIKE", value=True)
     p5 = st.toggle("P5: ARCHITECT", value=False)
     
@@ -91,13 +91,20 @@ with st.sidebar:
 
 # --- 5. MAIN HUD ---
 st.title("SUPER//MAN CONTROL CENTER")
-col_in, col_term = st.columns([1, 2.2])
+col_in, col_term = st.columns([1.2, 2])
 
 with col_in:
     st.subheader("Mission Brief")
-    tn = st.text_input("🎯 TARGET NAME", key="tn_val")
-    ru = st.text_input("🔗 ROOT URL", key="ru_val")
-    gh_repo = st.text_input("🐙 GITHUB REPO URL", key="gh_val")
+    # Restore Target Information Fields
+    tn = st.text_input("🎯 TARGET NAME", placeholder="LexCorp HQ", key="tn_val")
+    ru = st.text_input("🔗 ROOT URL", placeholder="lexcorp.com", key="ru_val")
+    gh_repo = st.text_input("🐙 GITHUB REPO URL", placeholder="https://github.com/user/agent", key="gh_val")
+    
+    col_scope1, col_scope2 = st.columns(2)
+    with col_scope1:
+        is_scope = st.text_area("✓ IN-SCOPE", height=100, placeholder="*.lexcorp.com\napi.lex.io", key="is_val")
+    with col_scope2:
+        os_scope = st.text_area("✗ OUT-SCOPE", height=100, placeholder="dev.lexcorp.com\n10.0.0.1", key="os_val")
     
     # --- VULN COUNTER ---
     st.write("**Live Vulnerability Tracker:**")
@@ -120,7 +127,8 @@ with col_in:
                 "PATH": f"{BIN_PATH}:{env.get('PATH', '')}",
                 "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
                 "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
-                "RUN_P5": "1" if p5 else "0", "GH_REPO": str(gh_repo)
+                "RUN_P5": "1" if p5 else "0", "GH_REPO": str(gh_repo),
+                "IN_SCOPE": str(is_scope), "OUT_SCOPE": str(os_scope)
             })
             
             subprocess.run(["chmod", "+x", SCRIPT])
@@ -129,6 +137,7 @@ with col_in:
                                     text=True, env=env, bufsize=1)
             
             for line in iter(proc.stdout.readline, ""):
+                # Severity Tag Parsing
                 lower_line = line.lower()
                 if "[critical]" in lower_line: st.session_state['vuln_counts']["critical"] += 1
                 elif "[high]" in lower_line: st.session_state['vuln_counts']["high"] += 1
@@ -142,7 +151,7 @@ with col_in:
             st.success("Strike Complete.")
             st.rerun()
         else:
-            st.warning("Enter Target and URL.")
+            st.warning("Enter Target Name and at least one URL/Repo.")
 
 with col_term:
     st.subheader("Live Tactical Feed")
