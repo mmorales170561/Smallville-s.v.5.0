@@ -23,7 +23,7 @@ st.markdown("""
     .terminal-box { 
         background-color: #000; border: 1px solid #ff0000; padding: 20px; 
         color: #ff0000; font-family: 'Courier New', monospace;
-        white-space: pre-wrap; height: 450px; overflow-y: auto;
+        white-space: pre-wrap; height: 500px; overflow-y: auto;
     }
     .status-panel { padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px; border: 1px solid #333; }
     </style>
@@ -49,7 +49,6 @@ init_db()
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
     
-    # Ready-Check for essential tools
     tools = ["nuclei", "naabu", "subfinder", "httpx"]
     ready = all([os.path.exists(f"/tmp/bin/{t}") for t in tools])
     
@@ -81,40 +80,4 @@ with st.sidebar:
 
 # --- 5. MAIN HUD ---
 st.title("SUPER//MAN CONTROL CENTER")
-t1, t2, t3 = st.tabs(["🎯 ENGAGEMENT", "🗄️ MISSION LEDGER", "📑 MISSION ARCHIVE"])
-
-with t1:
-    # --- RESTORED INPUT SECTIONS ---
-    col_input, col_term = st.columns([1, 2.2])
-    
-    with col_input:
-        st.subheader("Mission Brief")
-        target_name = st.text_input("🎯 TARGET NAME", placeholder="e.g. Project Smallville")
-        root_url = st.text_input("🔗 ROOT DOMAIN", placeholder="example.com")
-        in_scope = st.text_area("✓ IN-SCOPE ASSETS", placeholder="api.example.com, dev.example.com")
-        out_scope = st.text_area("✗ OUT-OF-SCOPE", placeholder="legal.example.com")
-        
-        st.divider()
-        
-        if st.button("FIRE RED KRYPTONITE GUN", use_container_width=True, type="primary"):
-            if not ready:
-                st.warning("Armory is empty. Prime tools in sidebar first.")
-            elif root_url and target_name:
-                prog = st.progress(0, text="Sequence Initialized...")
-                term = st.empty()
-                
-                strike_env = os.environ.copy()
-                strike_env.update({
-                    "IN_SCOPE": in_scope, "OUT_SCOPE": out_scope, 
-                    "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
-                    "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
-                    "DEBUG": "1" if debug_mode else "0", "PORT_PROFILE": port_profile
-                })
-                
-                p = subprocess.Popen(["bash", "powers.sh", "strike", root_url, target_name], 
-                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=strike_env, bufsize=1)
-                
-                full_rep = ""
-                for line in iter(p.stdout.readline, ''):
-                    full_rep += line
-                    if "PHASE 1" in
+t1, t2, t3 = st.tabs(["🎯
