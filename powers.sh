@@ -8,40 +8,43 @@ MISSION="$3"
 
 # --- ACTION: PRIME ---
 if [ "$ACTION" == "prime" ]; then
-    echo ">> [INIT] ARMING SYSTEMS IN /tmp/bin (FORCE-CURL MODE)..."
+    echo ">> [INIT] ARMING SYSTEMS IN /tmp/bin (DIRECT-SCRIPT MODE)..."
     mkdir -p /tmp/bin
     cd /tmp/bin
     
-    # 1. Download Subfinder
+    # 1. Install Subfinder via official script
     echo ">> Installing Subfinder..."
-    curl -sL "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.tar.gz" -o sub.tar.gz
-    tar -xzf sub.tar.gz && chmod +x subfinder
+    curl -sL https://raw.githubusercontent.com/projectdiscovery/subfinder/main/install.sh | bash
+    mv /tmp/bin/subfinder /tmp/bin/subfinder_tmp 2>/dev/null || true
     
-    # 2. Download HTTPX
+    # 2. Install HTTPX via official script
     echo ">> Installing HTTPX..."
-    curl -sL "https://github.com/projectdiscovery/httpx/releases/download/v1.6.4/httpx_1.6.4_linux_amd64.tar.gz" -o httpx.tar.gz
-    tar -xzf httpx.tar.gz && chmod +x httpx
+    curl -sL https://raw.githubusercontent.com/projectdiscovery/httpx/main/install.sh | bash
 
-    # 3. Download Nuclei
+    # 3. Install Nuclei via official script
     echo ">> Installing Nuclei..."
-    curl -sL "https://github.com/projectdiscovery/nuclei/releases/download/v3.2.9/nuclei_3.2.9_linux_amd64.tar.gz" -o nuclei.tar.gz
-    tar -xzf nuclei.tar.gz && chmod +x nuclei
+    curl -sL https://raw.githubusercontent.com/projectdiscovery/nuclei/main/install.sh | bash
 
-    # Cleanup
-    rm -f *.tar.gz
+    # 4. Final Permission Strike
+    chmod +x /tmp/bin/*
     echo ">> [COMPLETE] ARMORY VERIFIED: $(ls /tmp/bin | grep -E 'subfinder|httpx|nuclei' | tr '\n' ' ')"
     exit 0
 
 # --- ACTION: STRIKE ---
 elif [ "$ACTION" == "strike" ]; then
-    if [[ ! -f "/tmp/bin/subfinder" ]]; then
+    if [[ ! -f "/tmp/bin/subfinder" ]] && [[ ! -f "/usr/local/bin/subfinder" ]]; then
         echo "[ERROR] Armory Empty. Run PRIME first."
         exit 1
     fi
     
-    # Force absolute paths for execution
-    /tmp/bin/subfinder -d "$TARGET" -silent | /tmp/bin/httpx -silent
-    echo "$TARGET" | /tmp/bin/nuclei -silent -severity critical,high
+    echo "--- PHASE 1: CEREBRO (RECON) ---"
+    # Using 'command -v' to find the tool wherever it landed
+    SUB=$(command -v subfinder || echo "/tmp/bin/subfinder")
+    HTP=$(command -v httpx || echo "/tmp/bin/httpx")
+    NUC=$(command -v nuclei || echo "/tmp/bin/nuclei")
+
+    $SUB -d "$TARGET" -silent | $HTP -silent
+    echo "$TARGET" | $NUC -silent -severity critical,high
     
     echo ">> [COMPLETE] MISSION SUCCESSFUL."
     exit 0
