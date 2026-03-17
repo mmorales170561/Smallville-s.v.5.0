@@ -5,14 +5,18 @@ import requests
 import zipfile
 import io
 import stat
+from datetime import datetime
 
 # --- 1. CONFIG & PATHS ---
 BIN_PATH = "/tmp/smallville_bin"
 CWD = os.getcwd()
 SCRIPT = os.path.join(CWD, "powers.sh")
 
+# Persistent state for logs and history
 if 'terminal_logs' not in st.session_state: 
     st.session_state['terminal_logs'] = "READY FOR ENGAGEMENT..."
+if 'mission_history' not in st.session_state:
+    st.session_state['mission_history'] = []
 
 st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 
@@ -37,32 +41,28 @@ def check_armory():
     try:
         if not os.path.exists(BIN_PATH): return False
         tools = ["subfinder", "httpx", "nuclei"]
-        # Check if files exist AND are executable
         return all(os.path.isfile(os.path.join(BIN_PATH, t)) for t in tools)
-    except:
-        return False
+    except: return False
 
 is_ready = check_armory()
 
-# --- 4. SIDEBAR (RESTORED & STABILIZED) ---
+# --- 4. SIDEBAR (LOGGING INTEGRATED) ---
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
     
     if is_ready:
-        st.markdown('<div class="status-panel online"><b>SYSTEMS ONLINE</b><br>ARMORY PRIMED</div>', unsafe_allow_html=True)
+        st.markdown('<div class="status-panel online"><b>SYSTEMS ONLINE</b></div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="status-panel offline"><b>SYSTEMS OFFLINE</b><br>PRIME REQUIRED</div>', unsafe_allow_html=True)
+        st.markdown('<div class="status-panel offline"><b>SYSTEMS OFFLINE</b></div>', unsafe_allow_html=True)
 
     if st.button("PRIME ELITE TOOLS", use_container_width=True):
         with st.spinner("🔓 Breaking Permission Locks..."):
             os.makedirs(BIN_PATH, mode=0o777, exist_ok=True)
-            
             tools = {
                 "subfinder": "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip",
                 "httpx": "https://github.com/projectdiscovery/httpx/releases/download/v1.6.4/httpx_1.6.4_linux_amd64.zip",
                 "nuclei": "https://github.com/projectdiscovery/nuclei/releases/download/v3.2.9/nuclei_3.2.9_linux_amd64.zip"
             }
-            
             for name, url in tools.items():
                 try:
                     r = requests.get(url, timeout=30)
@@ -70,26 +70,35 @@ with st.sidebar:
                         z = zipfile.ZipFile(io.BytesIO(r.content))
                         for member in z.namelist():
                             z.extract(member, BIN_PATH)
-                            target_path = os.path.join(BIN_PATH, member)
-                            os.chmod(target_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+                            os.chmod(os.path.join(BIN_PATH, member), 0o777)
                         st.write(f"✅ {name} Armed")
-                    else:
-                        st.error(f"❌ {name} Download Failed: {r.status_code}")
-                except Exception as e:
-                    st.error(f"Error: {e}")
-            
-            st.success("Armory Ready!")
+                except: pass
             st.rerun()
 
     st.divider()
     st.subheader("⚡ PHASE TOGGLES")
-    p1 = st.toggle("P1: CEREBRO (Recon)", value=True)
-    p2 = st.toggle("P2: SHADOW (Discovery)", value=True)
-    p3 = st.toggle("P3: HOOK (Ports)", value=True)
-    p4 = st.toggle("P4: STRIKE (Vulns)", value=True)
+    p1 = st.toggle("P1: CEREBRO", value=True)
+    p2 = st.toggle("P2: SHADOW", value=True)
+    p3 = st.toggle("P3: HOOK", value=True)
+    p4 = st.toggle("P4: STRIKE", value=True)
     
     st.divider()
-    if st.button("CLEAR TACTICAL FEED", use_container_width=True):
+    st.subheader("📁 MISSION ARCHIVE")
+    
+    # Download Current Session Logs
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    st.download_button(
+        label="📥 DOWNLOAD CURRENT LOGS",
+        data=st.session_state['terminal_logs'],
+        file_name=f"smallville_log_{timestamp}.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
+    
+    if st.button("👁️ VIEW RAW LOG DATA", use_container_width=True):
+        st.code(st.session_state['terminal_logs'], language="text")
+
+    if st.button("🗑️ PURGE FEED", use_container_width=True):
         st.session_state['terminal_logs'] = "FEED WIPED. READY FOR ENGAGEMENT..."
         st.rerun()
 
@@ -99,43 +108,16 @@ col_in, col_term = st.columns([1, 2.2])
 
 with col_in:
     st.subheader("Mission Brief")
-    tn = st.text_input("🎯 TARGET NAME", placeholder="LexCorp")
-    ru = st.text_input("🔗 ROOT DOMAIN", placeholder="lexcorp.com")
-    is_scope = st.text_area("✓ IN-SCOPE", height=80, placeholder="*.lexcorp.com")
-    os_scope = st.text_area("✗ OUT-OF-SCOPE", height=80, placeholder="dev.lexcorp.com")
+    tn = st.text_input("🎯 TARGET NAME")
+    ru = st.text_input("🔗 ROOT DOMAIN")
+    is_scope = st.text_area("✓ IN-SCOPE", height=80)
     
     if st.button("FIRE RED KRYPTONITE GUN", type="primary", use_container_width=True):
         if not is_ready:
             st.error("ARMORY EMPTY. RUN PRIME FIRST.")
         elif tn and ru:
-            st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} ---\n"
+            start_time = datetime.now().strftime("%H:%M:%S")
+            st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} [{start_time}] ---\n"
             term_display = st.empty()
             
-            env = os.environ.copy()
-            env.update({
-                "PATH": f"{BIN_PATH}:{env.get('PATH', '')}",
-                "RUN_P1": "1" if p1 else "0",
-                "RUN_P2": "1" if p2 else "0",
-                "RUN_P3": "1" if p3 else "0",
-                "RUN_P4": "1" if p4 else "0",
-                "IN_SCOPE": str(is_scope)
-            })
-            
-            proc = subprocess.Popen(["bash", SCRIPT, "strike", ru, tn], 
-                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
-                                    text=True, env=env)
-            
-            while True:
-                line = proc.stdout.readline()
-                if not line and proc.poll() is not None: break
-                if line:
-                    st.session_state['terminal_logs'] += line
-                    term_display.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
-            
-            st.success(f"Mission {tn} Complete.")
-        else:
-            st.warning("Target details missing.")
-
-with col_term:
-    st.subheader("Live Tactical Feed")
-    st.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
+            env = os.environ.
