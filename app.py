@@ -4,9 +4,11 @@ import os
 import requests
 import zipfile
 import io
+import stat
 
 # --- 1. CONFIG ---
-BIN_PATH = "/tmp/bin"
+# Moving to a deeper subfolder to avoid root /tmp permission locks
+BIN_PATH = "/tmp/smallville_bin"
 CWD = os.getcwd()
 SCRIPT = os.path.join(CWD, "powers.sh")
 
@@ -28,45 +30,47 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. ARMORY CHECK ---
-def check_ready():
-    if not os.path.exists(BIN_PATH): return False
-    tools = ["subfinder", "httpx", "nuclei"]
-    return all(os.path.isfile(os.path.join(BIN_PATH, t)) for t in tools)
-
-ready = check_ready()
-
-# --- 4. SIDEBAR ---
+# --- 3. SIDEBAR ---
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
     
-    # THE DOWNLOADER BLOCK
     if st.button("PRIME ELITE TOOLS", use_container_width=True):
-        with st.spinner("📥 Bypassing Firewall..."):
-            os.makedirs(BIN_PATH, exist_ok=True)
+        with st.spinner("🔓 Breaking Permission Locks..."):
+            # Create directory with full permissions
+            if not os.path.exists(BIN_PATH):
+                os.makedirs(BIN_PATH, mode=0o777, exist_ok=True)
+            
             tools = {
                 "subfinder": "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip",
                 "httpx": "https://github.com/projectdiscovery/httpx/releases/download/v1.6.4/httpx_1.6.4_linux_amd64.zip",
                 "nuclei": "https://github.com/projectdiscovery/nuclei/releases/download/v3.2.9/nuclei_3.2.9_linux_amd64.zip"
             }
-            for name, url in tools.items():
-                r = requests.get(url)
-                if r.status_code == 200:
-                    z = zipfile.ZipFile(io.BytesIO(r.content))
-                    z.extractall(BIN_PATH)
-                    st.write(f"✅ {name} extracted.")
-                else:
-                    st.error(f"❌ {name} failed: {r.status_code}")
             
-            subprocess.run(f"chmod +x {BIN_PATH}/*", shell=True)
-            st.success("Armory Ready!")
+            for name, url in tools.items():
+                try:
+                    r = requests.get(url, timeout=30)
+                    if r.status_code == 200:
+                        z = zipfile.ZipFile(io.BytesIO(r.content))
+                        # Extracting one by one to handle permission errors per file
+                        for member in z.namelist():
+                            z.extract(member, BIN_PATH)
+                            # Manually set executable permission for the binary
+                            target_path = os.path.join(BIN_PATH, member)
+                            os.chmod(target_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+                        st.write(f"✅ {name} Armed")
+                    else:
+                        st.error(f"❌ {name} Download Failed")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
+            st.success("Armory Primed!")
             st.rerun()
 
     st.divider()
     p1 = st.toggle("P1: CEREBRO", True)
     p4 = st.toggle("P4: STRIKE", True)
 
-# --- 5. MAIN HUD ---
+# --- 4. MAIN HUD ---
 st.title("SUPER//MAN CONTROL CENTER")
 col_in, col_term = st.columns([1, 2.2])
 
@@ -76,14 +80,17 @@ with col_in:
     ru = st.text_input("🔗 ROOT DOMAIN")
     
     if st.button("FIRE RED KRYPTONITE GUN", type="primary", use_container_width=True):
-        if not check_ready():
-            st.error("ARMORY EMPTY. PRIME FIRST.")
-        elif tn and ru:
+        if tn and ru:
             st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} ---\n"
             term_display = st.empty()
             
             env = os.environ.copy()
-            env.update({"RUN_P1": "1" if p1 else "0", "RUN_P4": "1" if p4 else "0"})
+            # Pass the NEW BIN_PATH to the Bash script
+            env.update({
+                "PATH": f"{BIN_PATH}:{env.get('PATH', '')}",
+                "RUN_P1": "1" if p1 else "0",
+                "RUN_P4": "1" if p4 else "0"
+            })
             
             proc = subprocess.Popen(["bash", SCRIPT, "strike", ru, tn], 
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
