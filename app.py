@@ -78,6 +78,7 @@ with st.sidebar:
     p2 = st.toggle("P2: SHADOW", value=True)
     p3 = st.toggle("P3: HOOK", value=True)
     p4 = st.toggle("P4: STRIKE", value=True)
+    p5 = st.toggle("P5: ARCHITECT (Repo Scan)", value=False)
     
     st.divider()
     st.subheader("📁 MISSION ARCHIVE")
@@ -95,12 +96,13 @@ with col_in:
     st.subheader("Mission Brief")
     tn = st.text_input("🎯 TARGET NAME", placeholder="LexCorp", key="tn_val")
     ru = st.text_input("🔗 ROOT URL", placeholder="lexcorp.com", key="ru_val")
+    gh_repo = st.text_input("🐙 GITHUB REPO URL", placeholder="https://github.com/user/ai-agent", key="gh_val")
     
     col_s1, col_s2 = st.columns(2)
     with col_s1:
-        is_scope = st.text_area("✓ IN-SCOPE", height=100, placeholder="*.target.com", key="is_val")
+        is_scope = st.text_area("✓ IN-SCOPE", height=80, placeholder="*.target.com", key="is_val")
     with col_s2:
-        os_scope = st.text_area("✗ OUT-SCOPE", height=100, placeholder="dev.target.com", key="os_val")
+        os_scope = st.text_area("✗ OUT-SCOPE", height=80, placeholder="dev.target.com", key="os_val")
     
     # Weapon Status HUD
     st.markdown("---")
@@ -110,12 +112,11 @@ with col_in:
         color = "#00ff41" if tool in installed_tools else "#ff0000"
         status_html += f'<span class="tool-tag" style="color:{color}; border-color:{color};">{tool.upper()}</span>'
     st.markdown(status_html, unsafe_allow_html=True)
-    st.write("")
 
     if st.button("FIRE RED KRYPTONITE GUN", type="primary", use_container_width=True):
         if not is_ready:
             st.error("SYSTEMS OFFLINE. PRIME ARMORY.")
-        elif tn and ru:
+        elif tn and (ru or gh_repo):
             st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} ---\n"
             term_display = st.empty()
             
@@ -123,7 +124,8 @@ with col_in:
             env.update({
                 "PATH": f"{BIN_PATH}:{env.get('PATH', '')}",
                 "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
-                "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0"
+                "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
+                "RUN_P5": "1" if p5 else "0", "GH_REPO": str(gh_repo)
             })
             
             subprocess.run(["chmod", "+x", SCRIPT])
@@ -139,7 +141,7 @@ with col_in:
                     term_display.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
             st.success("Strike Complete.")
         else:
-            st.warning("Enter Target and URL.")
+            st.warning("Enter Target and either a URL or GitHub Repo.")
 
 with col_term:
     st.subheader("Live Tactical Feed")
