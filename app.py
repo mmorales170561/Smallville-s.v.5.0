@@ -1,4 +1,4 @@
-\import streamlit as st
+import streamlit as st
 import subprocess
 import os
 import sqlite3
@@ -7,7 +7,6 @@ import time
 from datetime import datetime
 
 # --- 2026 PATH INJECTION ---
-# Ensures binaries in /tmp/bin are prioritized even in locked environments
 if "/tmp/bin" not in os.environ["PATH"]:
     os.environ["PATH"] = "/tmp/bin" + os.pathsep + os.environ["PATH"]
 
@@ -51,8 +50,8 @@ if not st.session_state['auth']:
     _, col, _ = st.columns([1, 1.5, 1])
     with col:
         st.markdown("<h2 style='text-align:center; color:#ff0000;'>KRYPTONIAN ACCESS</h2>", unsafe_allow_html=True)
-        user = st.text_input("ID: clark_kent")
-        pwd = st.text_input("CRYPT: superman", type="password")
+        user = st.text_input("ID", value="clark_kent")
+        pwd = st.text_input("CRYPT", type="password")
         if st.button("AUTHORIZE"):
             if user == "clark_kent" and pwd == "superman":
                 st.session_state['auth'] = True
@@ -76,7 +75,6 @@ with st.sidebar:
     st.markdown("### 🛠️ KRYPTONIAN ARMORY")
     if st.button("PRIME ELITE WEAPONS"):
         with st.spinner("Extracting Weaponry..."):
-            # Use universal extraction via powers.sh
             result = subprocess.run(["bash", "powers.sh", "prime"], capture_output=True, text=True)
             st.code(result.stdout)
         st.success("Armory Status: ELITE")
@@ -96,35 +94,15 @@ with t1:
     with c1:
         st.subheader("Mission Brief")
         target = st.text_input("🎯 TARGET", placeholder="example.com")
-        in_scope = st.text_input("✓ IN-SCOPE", value=target.split('.')[-2] + '.' + target.split('.')[-1] if '.' in target else "")
+        # Logic to set scope
+        if target:
+            scope_val = target.split('.')[-2] + '.' + target.split('.')[-1] if '.' in target else target
+        else:
+            scope_val = ""
+        in_scope = st.text_input("✓ IN-SCOPE", value=scope_val)
         
         if st.button("FIRE RED KRYPTONITE GUN"):
             if in_scope and in_scope in target:
                 start_t = time.time()
                 status_box = st.empty()
-                env = os.environ.copy()
-                env["IN_SCOPE"] = in_scope
-                env["WAYBACK"] = "1" if wayback else "0"
-                env["PORTS"] = "1" if ports else "0"
-                
-                p = subprocess.Popen(["bash", "powers.sh", "strike", target], 
-                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
-                
-                telemetry = ""
-                for line in iter(p.stdout.readline, ''):
-                    telemetry += line + "\n"
-                    status_box.markdown(f'<div class="telemetry-card">{telemetry}</div>', unsafe_allow_html=True)
-                    if "CRITICAL" in line.upper():
-                        log_to_ledger(target, "CRITICAL", line.strip(), time.time() - start_t)
-                p.wait()
-            else:
-                st.error("SCOPE BREACH DETECTED.")
-
-with t2:
-    st.subheader("Intelligence Ledger")
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    df = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
-    conn.close()
-    
-    # Updated 2026 syntax: width='stretch' replaces use_container_width=True
-    st.dataframe(df, width='stretch')
+                env
