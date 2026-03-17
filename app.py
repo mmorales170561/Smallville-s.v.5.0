@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime
 from PIL import Image
 
-# --- DATABASE ENGINE ---
+# --- DATABASE ARCHIVE ---
 def init_db():
     conn = sqlite3.connect('daily_planet_vault.db')
     c = conn.cursor()
@@ -24,7 +24,7 @@ def log_to_vault(domain, severity, finding):
     conn.commit()
     conn.close()
 
-# --- THEME & STYLING ---
+# --- THEME: SLATE GREY & NEWSROOM ---
 st.set_page_config(page_title="Watchtower v6 | Daily Planet", layout="wide")
 init_db()
 
@@ -67,12 +67,11 @@ with tab1:
         power = st.selectbox("MISSION PROFILE", ["passive", "active", "vuln_hunt"])
         
         if st.button("LAUNCH MISSION"):
-            if scope in target:
+            if scope and scope in target:
                 progress_bar = st.progress(0)
                 status_msg = st.empty()
                 log_area = st.empty()
                 
-                # --- LIVE PROGRESS LOGIC ---
                 phases = ["Initializing Identity Rotation...", "Verifying Scope Guard...", "Executing Reconnaissance...", "Mimicking Human Patterns...", "Finalizing Intel..."]
                 
                 env = os.environ.copy()
@@ -93,7 +92,7 @@ with tab1:
                 p.wait()
                 st.success("Mission Complete.")
             else:
-                st.error("SCOPE VIOLATION: Investigation Aborted.")
+                st.error("SCOPE VIOLATION or EMPTY TARGET: Investigation Aborted.")
 
 with tab2:
     st.subheader("The Editorial Vault")
@@ -106,13 +105,35 @@ with tab2:
         target_row = df[df['finding'] == selection].iloc[0]
         
         if st.button("AUTO-GENERATE POC & REPORT"):
-            # --- AUTO-PoC LOGIC ENGINE ---
             finding_text = target_row['finding'].lower()
-            poc_steps = "1. Deploy Watchtower Scanning Module.\n2. Interact with target host endpoints."
-            
+            # Fixed String Logic
             if "xss" in finding_text:
                 poc_steps = "1. Locate input parameter on endpoint.\n2. Inject `<script>alert(document.domain)</script>`.\n3. Observe execution in browser context."
             elif "sql" in finding_text:
                 poc_steps = "1. Identify vulnerable parameter.\n2. Append `' OR 1=1--` to request.\n3. Observe unauthorized data return."
             elif "header" in finding_text:
-                poc_steps = "1. Intercept request using Proxy.\n2. Check response for missing Security Headers (CSP, HSTS).\n
+                poc_steps = "1. Intercept request using Proxy.\n2. Check response for missing Security Headers (CSP, HSTS).\n3. Confirm lack of protection."
+            else:
+                poc_steps = "1. Deploy Watchtower Scanning Module.\n2. Interact with target host endpoints.\n3. Verify response patterns manually."
+
+            st.markdown('<div class="report-card">', unsafe_allow_html=True)
+            st.markdown(f"## 📰 EXCLUSIVE: CRISIS AT {target_row['domain'].upper()}!")
+            st.markdown(f"**By Clark Kent, Daily Planet Correspondent** | *{target_row['timestamp']}*")
+            
+            st.markdown(f"""
+            **METROPOLIS** — The Daily Planet has learned that `{target_row['domain']}` faced a high-stakes digital confrontation today. 
+            Watchtower sensors detected a `{target_row['severity']}` vulnerability that threatened to compromise the city's infrastructure.
+            
+            ---
+            ### 🛠️ TECHNICAL DOSSIER (HACKERONE READY)
+            **Title:** {target_row['severity']} - Vulnerability on {target_row['domain']}
+            **Summary:** {target_row['finding']}
+            
+            **[AUTO-GENERATED PROOF OF CONCEPT]**
+            {poc_steps}
+            
+            **Impact:** Critical compromise of confidentiality and system integrity.
+            """)
+            st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.info("No findings in the Vault yet.")
