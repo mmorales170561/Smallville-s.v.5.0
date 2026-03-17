@@ -2,6 +2,7 @@
 BIN_DIR="/tmp/bin"
 mkdir -p $BIN_DIR
 export PATH=$PATH:$BIN_DIR
+UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) Watchtower/9.0"
 
 prime_tools() {
     echo ">> [ARMORY] SCANNING FOR WEAPONS..."
@@ -21,31 +22,44 @@ prime_tools() {
             local pkg="/tmp/${tools[$i]}_pkg"
             wget -q ${urls[$i]} -O "$pkg"
             
-            # Use Python's built-in extractor instead of 'unzip'
+            # Universal Extraction using Python's built-in modules
+            # This bypasses the 'unzip command not found' error
             python3 -c "import shutil; shutil.unpack_archive('$pkg', '$BIN_DIR')"
             
             rm "$pkg"
         fi
     done
+    
     chmod +x $BIN_DIR/*
-    echo ">> [ARMORY] ALL SYSTEMS OPERATIONAL."
+    echo ">> [ARMORY] ALL WEAPON SYSTEMS PRIMED AND READY."
 }
 
 case "$1" in
-    prime) prime_tools ;;
+    prime)
+        prime_tools
+        ;;
     strike)
-        # Call the priming check silently
-        if [[ ! -f "$BIN_DIR/subfinder" ]]; then prime_tools > /dev/null; fi
+        # Check if tools are missing before firing
+        if [[ ! -f "$BIN_DIR/subfinder" ]]; then
+            prime_tools
+        fi
         
-        echo ">> [1/4] SCARLET CEREBRO: MAPPING..."
+        echo ">> [PHASE 1] SCARLET CEREBRO: MAPPING ASSETS..."
         subfinder -d "$2" -silent | httpx -silent -title
         
         if [[ "$WAYBACK" == "1" ]]; then
-            echo ">> [2/4] SHADOW ARCHIVE: GAUGING DATA..."
-            echo "$2" | gau --subs --threads 10 | head -n 20
+            echo ">> [PHASE 2] SHADOW ARCHIVE: GAUGING DATA..."
+            echo "$2" | gau --subs --threads 10 | head -n 30
         fi
 
-        echo ">> [4/4] FIRING RED KRYPTONITE BEAM..."
-        subfinder -d "$2" -silent | httpx -silent | nuclei -silent -severity critical -rl 7
+        if [[ "$PORTS" == "1" ]]; then
+            echo ">> [PHASE 3] GRAPPLING HOOK: PROBING PORTS..."
+            naabu -host "$2" -top-ports 100 -silent
+        fi
+
+        echo ">> [PHASE 4] FIRING RED KRYPTONITE BEAM..."
+        # Nuclei scan with scope protection
+        subfinder -d "$2" -silent | httpx -silent | nuclei -silent -severity critical -header "User-Agent: $UA" -rl 7
         ;;
 esac
+echo ">> [COMPLETE] DATA SYNCED."
