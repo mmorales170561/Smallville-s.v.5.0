@@ -36,8 +36,6 @@ st.markdown("""
     .sidebar-stat { background-color: #1a1a1a; border: 1px solid #444; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
     .stat-val { color: #ff0000; font-weight: bold; font-size: 20px; }
     .telemetry-card { background-color: #000; border: 1px solid #ff0000; padding: 15px; color: #ff0000; height: 400px; overflow-y: auto; font-size: 12px; }
-    .stButton>button { background-color: #ff0000; color: white; border-radius: 0; border: none; font-weight: bold; width: 100%; }
-    .stButton>button:hover { background-color: #b30000; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -71,18 +69,17 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🛠️ KRYPTONIAN ARMORY")
     if st.button("PRIME ELITE WEAPONS"):
-        with st.spinner("Fetching Binaries..."):
+        with st.spinner("Refining Binaries..."):
             subprocess.run(["bash", "powers.sh", "prime"])
         st.success("Armory: ELITE STATUS")
     
     st.markdown("---")
     st.markdown("### 🕵️ SHADOW ARCHIVE")
-    wayback = st.toggle("WAYBACK LENS (Historical)", value=True)
-    secrets = st.toggle("SECRET SNIPER (Leaks)", value=False)
-    ports = st.toggle("GRAPPLING HOOK (Naabu)", value=False)
+    wayback = st.toggle("WAYBACK LENS", value=True)
+    ports = st.toggle("GRAPPLING HOOK", value=False)
 
 # --- MAIN HUD ---
-st.markdown('<div class="welcome-hud"><h1>WELCOME SUPER//MAN</h1><p style="color:#ff0000; letter-spacing:2px;">NEURAL LINK: ELITE | SHADOW ARCHIVE: READY</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="welcome-hud"><h1>WELCOME SUPER//MAN</h1><p style="color:#ff0000; letter-spacing:2px;">NEURAL LINK: ELITE | STATUS: OPERATIONAL</p></div>', unsafe_allow_html=True)
 
 t1, t2 = st.tabs(["🎯 ENGAGEMENT", "🗄️ TARGET LEDGER"])
 
@@ -100,7 +97,6 @@ with t1:
                 env = os.environ.copy()
                 env["IN_SCOPE"] = in_scope
                 env["WAYBACK"] = "1" if wayback else "0"
-                env["SECRETS"] = "1" if secrets else "0"
                 env["PORTS"] = "1" if ports else "0"
                 
                 p = subprocess.Popen(["bash", "powers.sh", "strike", target], 
@@ -121,4 +117,5 @@ with t2:
     conn = sqlite3.connect('red_kryptonite_ledger.db')
     df = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
     conn.close()
-    st.dataframe(df, use_container_width=True)
+    # 2026 Update: stretch instead of use_container_width
+    st.dataframe(df, width='stretch')
