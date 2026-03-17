@@ -4,7 +4,6 @@ import os
 import sqlite3
 import pandas as pd
 import time
-import re
 from datetime import datetime
 
 # --- 1. CLOUD ENVIRONMENT ---
@@ -13,8 +12,11 @@ CWD = os.getcwd()
 if BIN_PATH not in os.environ["PATH"]:
     os.environ["PATH"] = BIN_PATH + os.pathsep + os.environ["PATH"]
 
-if 'last_prime' not in st.session_state: st.session_state['last_prime'] = "NEVER"
-if 'terminal_logs' not in st.session_state: st.session_state['terminal_logs'] = "READY FOR ENGAGEMENT..."
+# Persistent logs so they don't vanish on rerun
+if 'terminal_logs' not in st.session_state: 
+    st.session_state['terminal_logs'] = "READY FOR ENGAGEMENT..."
+if 'last_prime' not in st.session_state: 
+    st.session_state['last_prime'] = "NEVER"
 
 st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 
@@ -40,19 +42,17 @@ if os.path.exists(BIN_PATH):
     tool_count = len([f for f in os.listdir(BIN_PATH) if os.path.isfile(os.path.join(BIN_PATH, f))])
 ready = tool_count >= 4
 
-# --- 4. SIDEBAR ARMORY (FULLY RESTORED) ---
+# --- 4. SIDEBAR ---
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
-    
     if ready:
         st.markdown(f'<div class="status-panel online"><b>SYSTEMS ONLINE</b><br>{tool_count} TOOLS LOADED</div>', unsafe_allow_html=True)
     else:
         st.markdown(f'<div class="status-panel offline"><b>SYSTEMS OFFLINE</b><br>{tool_count}/4 LOADED</div>', unsafe_allow_html=True)
 
     if st.button("PRIME ELITE TOOLS", width="stretch"):
-        with st.spinner("📦 Downloading Tech..."):
+        with st.spinner("📥 Priming..."):
             os.makedirs(BIN_PATH, exist_ok=True)
-            # Run prime with absolute pathing
             subprocess.run(["/bin/bash", os.path.join(CWD, "powers.sh"), "prime"], capture_output=True)
             st.session_state["last_prime"] = datetime.now().strftime("%H:%M:%S")
             st.rerun()
@@ -63,9 +63,6 @@ with st.sidebar:
     p2 = st.toggle("P2: SHADOW", True)
     p3 = st.toggle("P3: HOOK", True)
     p4 = st.toggle("P4: STRIKE", True)
-    
-    st.header("⚙️ CONFIG")
-    port_profile = st.selectbox("PORT PROFILE", ["Top 20", "Top 100", "Top 1000"])
 
 # --- 5. MAIN HUD ---
 st.title("SUPER//MAN CONTROL CENTER")
@@ -84,22 +81,25 @@ with t1:
             if not ready:
                 st.error("ARMORY OFFLINE")
             elif target_name and root_url:
+                # 1. Reset Session Logs
                 st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {target_name} ---\n"
-                term_placeholder = st.empty()
                 
-                # 1. SETUP ENVIRONMENT
+                # 2. Setup Environment
                 env = os.environ.copy()
                 env["PATH"] = f"{BIN_PATH}:{env.get('PATH', '')}"
                 env.update({
                     "IN_SCOPE": str(in_scope), "OUT_SCOPE": str(out_scope),
                     "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
-                    "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
-                    "PORT_PROFILE": port_profile
+                    "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0"
                 })
+
+                # 3. Create the Terminal Placeholder
+                # We update the col_term column specifically
+                with col_term:
+                    term_display = st.empty()
                 
-                # 2. EXECUTE WITH ABSOLUTE PATHS & REAL-TIME STREAMING
+                # 4. Start Process
                 script_path = os.path.join(CWD, "powers.sh")
-                # We use shell=False for stability, but pass the list to /bin/bash
                 proc = subprocess.Popen(
                     ["/bin/bash", script_path, "strike", str(root_url), str(target_name)],
                     stdout=subprocess.PIPE,
@@ -109,23 +109,26 @@ with t1:
                     cwd=CWD,
                     bufsize=1
                 )
-                
-                # 3. CAPTURE LOGS
+
+                # 5. The Active Stream Loop
                 while True:
                     line = proc.stdout.readline()
                     if not line and proc.poll() is not None:
                         break
                     if line:
                         st.session_state['terminal_logs'] += line
-                        term_placeholder.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
+                        # This 'term_display' is what makes it scroll step-by-step
+                        term_display.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
                 
                 proc.wait()
                 st.success(f"Mission {target_name} Complete.")
 
     with col_term:
         st.subheader("Live Tactical Feed")
+        # Shows the persistent logs when not actively scanning
         st.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
 
+# --- 6. ARCHIVE & LEDGER ---
 with t2:
     st.subheader("🗄️ MISSION LEDGER")
-    # Database logic remains consistent here...
+    # SQL Table Logic...
