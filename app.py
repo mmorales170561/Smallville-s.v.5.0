@@ -5,6 +5,7 @@ import requests
 import zipfile
 import io
 import stat
+import re
 from datetime import datetime
 
 # --- 1. CONFIG & STABLE PATHS ---
@@ -14,6 +15,8 @@ SCRIPT = os.path.join(CWD, "powers.sh")
 
 if 'terminal_logs' not in st.session_state: 
     st.session_state['terminal_logs'] = "READY FOR ENGAGEMENT..."
+if 'vuln_counts' not in st.session_state:
+    st.session_state['vuln_counts'] = {"critical": 0, "high": 0, "medium": 0, "info": 0}
 
 st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 
@@ -27,10 +30,13 @@ st.markdown("""
         white-space: pre-wrap; height: 600px; overflow-y: auto; font-size: 14px;
         box-shadow: inset 0 0 20px rgba(255,0,0,0.5); border-radius: 5px;
     }
+    .vuln-stat { padding: 10px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 18px; margin: 5px 0; border: 1px solid #444; }
+    .crit { color: #ff0000; border-color: #ff0000; background: rgba(255,0,0,0.1); }
+    .high { color: #ffae00; border-color: #ffae00; background: rgba(255,174,0,0.1); }
+    .med { color: #ffff00; border-color: #ffff00; background: rgba(255,255,0,0.1); }
     .status-panel { padding: 10px; border-radius: 5px; text-align: center; border: 1px solid #333; margin-bottom: 10px; }
     .online { color: #00ff41; border-color: #00ff41; background: rgba(0,255,65,0.1); }
     .offline { color: #ff0000; border-color: #ff0000; background: rgba(255,0,0,0.1); }
-    .tool-tag { font-size: 10px; padding: 2px 5px; border-radius: 3px; margin-right: 5px; border: 1px solid #444; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -71,16 +77,15 @@ with st.sidebar:
     st.subheader("⚡ PHASE TOGGLES")
     p1 = st.toggle("P1: CEREBRO", value=True)
     p2 = st.toggle("P2: SHADOW", value=True)
-    p3 = st.toggle("P3: HOOK", value=True)
     p4 = st.toggle("P4: STRIKE", value=True)
     p5 = st.toggle("P5: ARCHITECT", value=False)
     
     st.divider()
-    st.subheader("📁 MISSION ARCHIVE")
     st.download_button("📥 DOWNLOAD LOGS", data=st.session_state['terminal_logs'], 
                        file_name=f"log_{datetime.now().strftime('%H%M%S')}.txt", use_container_width=True)
     if st.button("🗑️ PURGE FEED", use_container_width=True):
         st.session_state['terminal_logs'] = "READY..."
+        st.session_state['vuln_counts'] = {"critical": 0, "high": 0, "medium": 0, "info": 0}
         st.rerun()
 
 # --- 5. MAIN HUD ---
@@ -89,34 +94,32 @@ col_in, col_term = st.columns([1, 2.2])
 
 with col_in:
     st.subheader("Mission Brief")
-    tn = st.text_input("🎯 TARGET NAME", placeholder="LexCorp", key="tn_val")
-    ru = st.text_input("🔗 ROOT URL", placeholder="lexcorp.com", key="ru_val")
-    gh_repo = st.text_input("🐙 GITHUB REPO URL", placeholder="https://github.com/user/ai-agent", key="gh_val")
+    tn = st.text_input("🎯 TARGET NAME", key="tn_val")
+    ru = st.text_input("🔗 ROOT URL", key="ru_val")
+    gh_repo = st.text_input("🐙 GITHUB REPO URL", key="gh_val")
     
-    col_s1, col_s2 = st.columns(2)
-    with col_s1: is_scope = st.text_area("✓ IN-SCOPE", height=80, key="is_val")
-    with col_s2: os_scope = st.text_area("✗ OUT-SCOPE", height=80, key="os_val")
-    
-    status_html = ""
-    for tool in ["subfinder", "httpx", "nuclei"]:
-        color = "#00ff41" if tool in installed_tools else "#ff0000"
-        status_html += f'<span class="tool-tag" style="color:{color}; border-color:{color};">{tool.upper()}</span>'
-    st.markdown(status_html, unsafe_allow_html=True)
+    # --- VULN COUNTER DISPLAY ---
+    st.write("**Live Vulnerability Tracker:**")
+    v = st.session_state['vuln_counts']
+    c1, c2, c3 = st.columns(3)
+    c1.markdown(f'<div class="vuln-stat crit">{v["critical"]}<br><small>CRIT</small></div>', unsafe_allow_html=True)
+    c2.markdown(f'<div class="vuln-stat high">{v["high"]}<br><small>HIGH</small></div>', unsafe_allow_html=True)
+    c3.markdown(f'<div class="vuln-stat med">{v["medium"]}<br><small>MED</small></div>', unsafe_allow_html=True)
 
     if st.button("FIRE RED KRYPTONITE GUN", type="primary", use_container_width=True):
         if not is_ready:
-            st.error("SYSTEMS OFFLINE. PRIME ARMORY.")
+            st.error("ARMORY OFFLINE.")
         elif tn and (ru or gh_repo):
             st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} ---\n"
-            # The key change: We use st.empty() here to update the feed LIVE
+            st.session_state['vuln_counts'] = {"critical": 0, "high": 0, "medium": 0, "info": 0}
             term_placeholder = st.empty() 
             
             env = os.environ.copy()
             env.update({
                 "PATH": f"{BIN_PATH}:{env.get('PATH', '')}",
                 "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
-                "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
-                "RUN_P5": "1" if p5 else "0", "GH_REPO": str(gh_repo)
+                "RUN_P4": "1" if p4 else "0", "RUN_P5": "1" if p5 else "0",
+                "GH_REPO": str(gh_repo)
             })
             
             subprocess.run(["chmod", "+x", SCRIPT])
@@ -124,19 +127,23 @@ with col_in:
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
                                     text=True, env=env, bufsize=1)
             
-            # Streaming results directly into the terminal feed
             for line in iter(proc.stdout.readline, ""):
+                # Parse for Nuclei Severity Tags
+                lower_line = line.lower()
+                if "[critical]" in lower_line: st.session_state['vuln_counts']["critical"] += 1
+                elif "[high]" in lower_line: st.session_state['vuln_counts']["high"] += 1
+                elif "[medium]" in lower_line: st.session_state['vuln_counts']["medium"] += 1
+                
                 st.session_state['terminal_logs'] += line
-                # Update the display immediately
                 term_placeholder.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
+                # Force update of counters during scan
+                st.rerun() if "[critical]" in lower_line or "[high]" in lower_line else None
             
             proc.stdout.close()
             proc.wait()
             st.success("Strike Complete.")
-        else:
-            st.warning("Enter Target and URL.")
+            st.rerun() # Final refresh to show scores
 
 with col_term:
     st.subheader("Live Tactical Feed")
-    # This acts as the container for the terminal box
-    term_display = st.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
