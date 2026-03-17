@@ -17,13 +17,17 @@ prime_tools() {
     )
 
     for i in "${!tools[@]}"; do
-        if ! command -v ${tools[$i]} &> /dev/null; then
+        if ! command -v ${tools[$i]} &> /dev/null && [ ! -f "$BIN_DIR/${tools[$i]}" ]; then
             echo ">> [FETCHING] ${tools[$i]}..."
-            local pkg="/tmp/${tools[$i]}_pkg"
+            
+            # Determine extension
+            ext="zip"
+            if [[ ${urls[$i]} == *".tar.gz" ]]; then ext="tar.gz"; fi
+            
+            local pkg="/tmp/${tools[$i]}.$ext"
             wget -q ${urls[$i]} -O "$pkg"
             
-            # Universal Extraction using Python's built-in modules
-            # This bypasses the 'unzip command not found' error
+            # Precise Extraction
             python3 -c "import shutil; shutil.unpack_archive('$pkg', '$BIN_DIR')"
             
             rm "$pkg"
@@ -31,7 +35,7 @@ prime_tools() {
     done
     
     chmod +x $BIN_DIR/*
-    echo ">> [ARMORY] ALL WEAPON SYSTEMS PRIMED AND READY."
+    echo ">> [ARMORY] ALL WEAPON SYSTEMS PRIMED."
 }
 
 case "$1" in
@@ -39,27 +43,24 @@ case "$1" in
         prime_tools
         ;;
     strike)
-        # Check if tools are missing before firing
-        if [[ ! -f "$BIN_DIR/subfinder" ]]; then
-            prime_tools
-        fi
+        # Force re-check of binaries
+        if [ ! -f "$BIN_DIR/subfinder" ]; then prime_tools; fi
         
         echo ">> [PHASE 1] SCARLET CEREBRO: MAPPING ASSETS..."
-        subfinder -d "$2" -silent | httpx -silent -title
+        $BIN_DIR/subfinder -d "$2" -silent | $BIN_DIR/httpx -silent -title
         
         if [[ "$WAYBACK" == "1" ]]; then
             echo ">> [PHASE 2] SHADOW ARCHIVE: GAUGING DATA..."
-            echo "$2" | gau --subs --threads 10 | head -n 30
+            # gau is already working based on your logs
+            $BIN_DIR/gau --subs --threads 10 "$2" | head -n 30
         fi
 
         if [[ "$PORTS" == "1" ]]; then
             echo ">> [PHASE 3] GRAPPLING HOOK: PROBING PORTS..."
-            naabu -host "$2" -top-ports 100 -silent
+            $BIN_DIR/naabu -host "$2" -top-ports 100 -silent
         fi
 
         echo ">> [PHASE 4] FIRING RED KRYPTONITE BEAM..."
-        # Nuclei scan with scope protection
-        subfinder -d "$2" -silent | httpx -silent | nuclei -silent -severity critical -header "User-Agent: $UA" -rl 7
+        $BIN_DIR/subfinder -d "$2" -silent | $BIN_DIR/httpx -silent | $BIN_DIR/nuclei -silent -severity critical -rl 7
         ;;
 esac
-echo ">> [COMPLETE] DATA SYNCED."
