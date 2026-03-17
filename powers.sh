@@ -30,10 +30,12 @@ case "$1" in
             echo "$FINAL_LIST" | $BIN_DIR/gau --subs --threads 10 2>/dev/null | head -n 15
         fi
 
-        # PHASE 3: PORTS
+       # PHASE 3: GRAPPLING HOOK (REPAIRED)
         if [ "$RUN_P3" == "1" ]; then
             echo ">> [PHASE 3] GRAPPLING HOOK..."
-            echo "$FINAL_LIST" | $BIN_DIR/naabu -top-ports 20 -silent
+            # Using a manual list of the top 20 ports instead of the buggy -top-ports flag
+            TOP_20="80,443,8080,8443,21,22,25,53,110,143,445,3306,3389,5900,6379,9000,9090,9200,9443,10000"
+            echo "$FINAL_LIST" | $BIN_DIR/naabu -p $TOP_20 -silent -rate 1000
         fi
 
         # PHASE 4: STRIKE
