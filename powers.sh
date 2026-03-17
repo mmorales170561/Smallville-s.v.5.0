@@ -12,7 +12,7 @@ fi
 
 mimic_human() {
     delay=$(( ( RANDOM % 3 )  + 2 ))
-    echo ">> [MIMIC] STAGGERING..."
+    echo ">> [MIMIC] STAGGERING TIMING..."
     sleep $delay
 }
 
