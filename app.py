@@ -10,130 +10,61 @@ from datetime import datetime
 if "/tmp/bin" not in os.environ["PATH"]:
     os.environ["PATH"] = "/tmp/bin" + os.pathsep + os.environ["PATH"]
 
-# --- DATABASE ENGINE ---
-def init_db():
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS ledger 
-                 (id INTEGER PRIMARY KEY, timestamp TEXT, target TEXT, 
-                  threat_level TEXT, intel TEXT, duration_sec REAL)''')
-    conn.commit()
-    conn.close()
-
-def log_to_ledger(target, threat, intel, duration_sec):
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    c = conn.cursor()
-    c.execute("INSERT INTO ledger (timestamp, target, threat_level, intel, duration_sec) VALUES (?,?,?,?,?)",
-              (datetime.now().strftime("%Y-%m-%d %H:%M"), target, threat, intel, duration_sec))
-    conn.commit()
-    conn.close()
-
-# --- THEME: KRYPTONIAN ELITE ---
-st.set_page_config(page_title="Operation: Red Kryptonite | ELITE", layout="wide")
-init_db()
+# --- THEME: KRYPTONIAN TERMINAL ---
+st.set_page_config(page_title="Operation: Red Kryptonite", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #050505; color: #e0e0e0; font-family: 'Courier New', monospace; }
-    .welcome-hud { border-left: 5px solid #ff0000; padding: 20px; margin-bottom: 20px; background-color: #121416; }
-    .welcome-hud h1 { font-family: 'Georgia', serif; font-size: 32px; color: #ffffff; margin: 0; text-transform: uppercase; }
-    .sidebar-stat { background-color: #1a1a1a; border: 1px solid #444; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
-    .stat-val { color: #ff0000; font-weight: bold; font-size: 20px; }
-    .telemetry-card { background-color: #000; border: 1px solid #ff0000; padding: 15px; color: #ff0000; height: 400px; overflow-y: auto; font-size: 12px; }
-    .stButton>button { background-color: #ff0000; color: white; font-weight: bold; width: 100%; border: none; }
+    .stApp { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; }
+    .terminal-box { 
+        background-color: #000; 
+        border: 1px solid #ff0000; 
+        padding: 20px; 
+        color: #ff0000;
+        font-family: 'Courier New', monospace;
+        white-space: pre-wrap;
+        height: 500px;
+        overflow-y: auto;
+    }
+    .stButton>button { background-color: #ff0000; color: black; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- AUTHORIZATION GATE ---
-if 'auth' not in st.session_state: st.session_state['auth'] = False
-if not st.session_state['auth']:
-    _, col, _ = st.columns([1, 1.5, 1])
-    with col:
-        st.markdown("<h2 style='text-align:center; color:#ff0000;'>KRYPTONIAN ACCESS</h2>", unsafe_allow_html=True)
-        user = st.text_input("ID", value="clark_kent")
-        pwd = st.text_input("CRYPT", type="password")
-        if st.button("AUTHORIZE"):
-            if user == "clark_kent" and pwd == "superman":
-                st.session_state['auth'] = True
-                st.rerun()
-    st.stop()
-
-# --- SIDEBAR: NEURAL CORE & ARMORY ---
+# --- SIDEBAR ARSENAL ---
 with st.sidebar:
-    st.markdown("### 🧠 NEURAL CORE: EFFICIENCY")
-    try:
-        conn = sqlite3.connect('red_kryptonite_ledger.db')
-        df_stats = pd.read_sql_query("SELECT * FROM ledger", conn)
-        conn.close()
-        if not df_stats.empty:
-            total_crits = len(df_stats[df_stats['threat_level'] == 'CRITICAL'])
-            total_time_min = df_stats['duration_sec'].sum() / 60
-            cpm = total_crits / total_time_min if total_time_min > 0 else 0
-            st.markdown(f'<div class="sidebar-stat"><p style="margin:0; font-size:12px;">HUNT VELOCITY (CPM)</p><p class="stat-val">{cpm:.2f}</p></div>', unsafe_allow_html=True)
-    except:
-        st.info("Neural Core Warming Up...")
-    
-    st.markdown("---")
     st.markdown("### 🛠️ KRYPTONIAN ARMORY")
     if st.button("PRIME ELITE WEAPONS"):
-        with st.spinner("Extracting Weaponry..."):
-            result = subprocess.run(["bash", "powers.sh", "prime"], capture_output=True, text=True)
-            st.code(result.stdout)
+        with st.spinner("Syncing..."):
+            subprocess.run(["bash", "powers.sh", "prime"], capture_output=True)
         st.success("Armory Status: ELITE")
     
     st.markdown("---")
-    st.markdown("### 🕵️ SHADOW ARCHIVE")
     wayback = st.toggle("WAYBACK LENS", value=True)
-    ports = st.toggle("GRAPPLING HOOK", value=False)
+    secrets = st.toggle("SECRET SNIPER", value=False)
+    visual = st.toggle("VISUAL RECON", value=False)
+    ports = st.toggle("GRAPPLING HOOK", value=True)
 
 # --- MAIN HUD ---
-st.markdown('<div class="welcome-hud"><h1>WELCOME SUPER//MAN</h1><p style="color:#ff0000; letter-spacing:2px;">NEURAL LINK: ELITE | ARCHIVE: ACTIVE</p></div>', unsafe_allow_html=True)
+st.title("SUPER//MAN CONTROL CENTER")
+target = st.text_input("🎯 TARGET")
 
-t1, t2 = st.tabs(["🎯 ENGAGEMENT", "🗄️ TARGET LEDGER"])
-
-with t1:
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        st.subheader("Mission Brief")
-        target = st.text_input("🎯 TARGET", placeholder="example.com")
+if st.button("FIRE RED KRYPTONITE GUN"):
+    if target:
+        terminal = st.empty()
+        # Initialize env with toggles
+        strike_env = os.environ.copy()
+        strike_env.update({
+            "WAYBACK": "1" if wayback else "0",
+            "SECRETS": "1" if secrets else "0",
+            "VISUAL": "1" if visual else "0",
+            "PORTS": "1" if ports else "0"
+        })
         
-        # Determine default scope
-        default_scope = ""
-        if target and "." in target:
-            default_scope = ".".join(target.split(".")[-2:])
+        p = subprocess.Popen(["bash", "powers.sh", "strike", target], 
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=strike_env)
         
-        in_scope = st.text_input("✓ IN-SCOPE", value=default_scope)
-        
-        if st.button("FIRE RED KRYPTONITE GUN"):
-            if in_scope and target and in_scope in target:
-                start_t = time.time()
-                status_box = st.empty()
-                
-                # --- CORRECT SCOPING OF ENV ---
-                strike_env = os.environ.copy()
-                strike_env["IN_SCOPE"] = str(in_scope)
-                strike_env["WAYBACK"] = "1" if wayback else "0"
-                strike_env["PORTS"] = "1" if ports else "0"
-                
-                p = subprocess.Popen(["bash", "powers.sh", "strike", target], 
-                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=strike_env)
-                
-                telemetry = ""
-                for line in iter(p.stdout.readline, ''):
-                    telemetry += line + "\n"
-                    status_box.markdown(f'<div class="telemetry-card">{telemetry}</div>', unsafe_allow_html=True)
-                    if "CRITICAL" in line.upper():
-                        log_to_ledger(target, "CRITICAL", line.strip(), time.time() - start_t)
-                p.wait()
-            else:
-                st.error("SCOPE BREACH OR TARGET MISSING.")
-
-with t2:
-    st.subheader("Intelligence Ledger")
-    try:
-        conn = sqlite3.connect('red_kryptonite_ledger.db')
-        df = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
-        conn.close()
-        st.dataframe(df, width='stretch')
-    except:
-        st.info("Waiting for first mission data...")
+        output = ""
+        for line in iter(p.stdout.readline, ''):
+            output += line
+            terminal.markdown(f'<div class="terminal-box">{output}</div>', unsafe_allow_html=True)
+        p.wait()
