@@ -4,9 +4,8 @@ import os
 import sqlite3
 import pandas as pd
 from datetime import datetime
-from PIL import Image
 
-# --- DATABASE ARCHIVE ---
+# --- DATABASE ENGINE ---
 def init_db():
     conn = sqlite3.connect('daily_planet_vault.db')
     c = conn.cursor()
@@ -24,8 +23,8 @@ def log_to_vault(domain, severity, finding):
     conn.commit()
     conn.close()
 
-# --- THEME: SLATE GREY & NEWSROOM ---
-st.set_page_config(page_title="Watchtower v6 | Daily Planet", layout="wide")
+# --- THEME & STYLING ---
+st.set_page_config(page_title="Watchtower v7 | Daily Planet", layout="wide")
 init_db()
 
 st.markdown("""
@@ -33,66 +32,59 @@ st.markdown("""
     .stApp { background-color: #2b2d31; color: #e0e0e0; font-family: 'Georgia', serif; }
     .masthead { text-align: center; border-bottom: 2px solid #555; padding: 20px; margin-bottom: 30px; }
     .masthead h1 { font-family: 'Times New Roman', serif; font-size: 52px; color: #ffffff; margin: 0; text-transform: uppercase; }
+    .scope-label { font-family: 'Arial'; font-weight: bold; font-size: 12px; margin-bottom: 5px; }
     .report-card { background-color: #fdfcf8; color: #1a1a1a; padding: 40px; border: 1px solid #000; box-shadow: 10px 10px 0px #002244; }
     .stButton>button { background-color: #444; color: white; border-radius: 0; width: 100%; border: 1px solid #666; font-weight: bold; }
     .stButton>button:hover { background-color: #ff0000; border-color: #ff0000; }
-    .status-text { font-family: 'Courier New', monospace; color: #4ade80; font-size: 14px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOGIN GATE ---
-if 'auth' not in st.session_state: st.session_state['auth'] = False
-if not st.session_state['auth']:
-    st.markdown('<div class="masthead"><h1>THE DAILY PLANET</h1></div>', unsafe_allow_html=True)
-    _, col, _ = st.columns([1,1,1])
-    with col:
-        user = st.text_input("REPORTER ID")
-        pwd = st.text_input("ACCESS KEY", type="password")
-        if st.button("AUTHENTICATE"):
-            if user == "clark_kent" and pwd == "superman":
-                st.session_state['auth'] = True
-                st.rerun()
-    st.stop()
-
-st.markdown('<div class="masthead"><h1>THE DAILY PLANET</h1><p style="color:#aaa;">WATCHTOWER v6.0 | AUTONOMOUS TRIAGE</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="masthead"><h1>THE DAILY PLANET</h1><p style="color:#aaa;">WATCHTOWER v7.0 | DUAL-GATE SCOPE CONTROL</p></div>', unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["🗞️ NEWSROOM INVESTIGATION", "🗄️ EDITORIAL VAULT"])
 
 with tab1:
     c1, c2 = st.columns([1, 2])
     with c1:
-        st.subheader("Field Operations")
-        target = st.text_input("TARGET DOMAIN", placeholder="example.com")
-        scope = st.text_input("AUTHORIZED SCOPE", placeholder="example.com")
+        st.subheader("Field Boundaries")
+        target = st.text_input("🎯 TARGET DOMAIN", placeholder="sub.example.com")
+        
+        st.markdown('<p class="scope-label" style="color:#4ade80;">✓ AUTHORIZED IN-SCOPE</p>', unsafe_allow_html=True)
+        in_scope = st.text_input("Include (e.g., example.com)", value=target.split('.')[-2]+'.'+target.split('.')[-1] if '.' in target else "")
+        
+        st.markdown('<p class="scope-label" style="color:#f87171;">🛑 RESTRICTED OUT-OF-SCOPE</p>', unsafe_allow_html=True)
+        out_scope = st.text_input("Exclude (e.g., dev.example.com or staging)")
+
         power = st.selectbox("MISSION PROFILE", ["passive", "active", "vuln_hunt"])
         
         if st.button("LAUNCH MISSION"):
-            if scope and scope in target:
+            # GATE 1: Check if target is in the allowed zone
+            is_allowed = in_scope and in_scope in target
+            # GATE 2: Check if target hits the restricted zone
+            is_restricted = out_scope and out_scope in target
+            
+            if is_allowed and not is_restricted:
                 progress_bar = st.progress(0)
-                status_msg = st.empty()
                 log_area = st.empty()
                 
-                phases = ["Initializing Identity Rotation...", "Verifying Scope Guard...", "Executing Reconnaissance...", "Mimicking Human Patterns...", "Finalizing Intel..."]
-                
                 env = os.environ.copy()
-                env["IN_SCOPE"] = scope
+                env["IN_SCOPE"] = in_scope
+                env["OUT_SCOPE"] = out_scope
+                
                 p = subprocess.Popen(["bash", "powers.sh", power, target], 
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
                 
-                phase_idx = 0
                 for line in iter(p.stdout.readline, ''):
-                    if "MIMIC" in line: 
-                        phase_idx = min(phase_idx + 1, 4)
-                        status_msg.markdown(f"**CURRENT PHASE:** <span class='status-text'>{phases[phase_idx]}</span>", unsafe_allow_html=True)
-                        progress_bar.progress((phase_idx + 1) * 20)
-                    
                     log_area.code(line)
                     if "CRITICAL" in line.upper():
                         log_to_vault(target, "CRITICAL", line.strip())
                 p.wait()
-                st.success("Mission Complete.")
+                st.success("Mission Concluded.")
             else:
-                st.error("SCOPE VIOLATION or EMPTY TARGET: Investigation Aborted.")
+                if is_restricted:
+                    st.error("🛑 MISSION ABORTED: Target identified in Restricted Out-of-Scope zone.")
+                else:
+                    st.error("⚠️ MISSION ABORTED: Target outside of Authorized In-Scope boundary.")
 
 with tab2:
     st.subheader("The Editorial Vault")
@@ -104,36 +96,24 @@ with tab2:
         selection = st.selectbox("Select Intelligence Finding", df['finding'].tolist())
         target_row = df[df['finding'] == selection].iloc[0]
         
-        if st.button("AUTO-GENERATE POC & REPORT"):
-            finding_text = target_row['finding'].lower()
-            # Fixed String Logic
-            if "xss" in finding_text:
-                poc_steps = "1. Locate input parameter on endpoint.\n2. Inject `<script>alert(document.domain)</script>`.\n3. Observe execution in browser context."
-            elif "sql" in finding_text:
-                poc_steps = "1. Identify vulnerable parameter.\n2. Append `' OR 1=1--` to request.\n3. Observe unauthorized data return."
-            elif "header" in finding_text:
-                poc_steps = "1. Intercept request using Proxy.\n2. Check response for missing Security Headers (CSP, HSTS).\n3. Confirm lack of protection."
-            else:
-                poc_steps = "1. Deploy Watchtower Scanning Module.\n2. Interact with target host endpoints.\n3. Verify response patterns manually."
-
+        if st.button("GENERATE POC & NEWSPAPER REPORT"):
             st.markdown('<div class="report-card">', unsafe_allow_html=True)
             st.markdown(f"## 📰 EXCLUSIVE: CRISIS AT {target_row['domain'].upper()}!")
-            st.markdown(f"**By Clark Kent, Daily Planet Correspondent** | *{target_row['timestamp']}*")
+            st.markdown(f"**By Clark Kent, Daily Planet Correspondent**")
             
             st.markdown(f"""
-            **METROPOLIS** — The Daily Planet has learned that `{target_row['domain']}` faced a high-stakes digital confrontation today. 
-            Watchtower sensors detected a `{target_row['severity']}` vulnerability that threatened to compromise the city's infrastructure.
+            **METROPOLIS** — High-level digital disturbances were neutralized at `{target_row['domain']}` today. 
+            The Daily Planet can confirm that the investigation was conducted strictly within authorized boundaries.
+            
+            "We had a clear perimeter," a Watchtower analyst stated. "Any attempts by the threat to move toward restricted zones were blocked by the Man of Steel's vigilant oversight."
             
             ---
             ### 🛠️ TECHNICAL DOSSIER (HACKERONE READY)
-            **Title:** {target_row['severity']} - Vulnerability on {target_row['domain']}
             **Summary:** {target_row['finding']}
-            
-            **[AUTO-GENERATED PROOF OF CONCEPT]**
-            {poc_steps}
-            
-            **Impact:** Critical compromise of confidentiality and system integrity.
+            **Target Authority:** {target_row['domain']}
+            **Reproduction Steps:**
+            1. Initialize Watchtower module with Target: `{target_row['domain']}`.
+            2. Verified that host resides within `{in_scope}` and avoids `{out_scope if out_scope else "N/A"}`.
+            3. Executed `{power}` scan and identified `{target_row['severity']}` finding.
             """)
             st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.info("No findings in the Vault yet.")
