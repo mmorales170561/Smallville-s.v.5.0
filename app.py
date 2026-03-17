@@ -4,14 +4,14 @@ import os
 import time
 from datetime import datetime
 
-# --- 1. CLOUD ENVIRONMENT ---
+# --- 1. ENVIRONMENT ---
 BIN_PATH = "/tmp/bin"
 CWD = os.getcwd()
 if BIN_PATH not in os.environ["PATH"]:
     os.environ["PATH"] = BIN_PATH + os.pathsep + os.environ["PATH"]
 
 if 'terminal_logs' not in st.session_state: 
-    st.session_state['terminal_logs'] = "READY FOR MISSION..."
+    st.session_state['terminal_logs'] = "READY FOR ENGAGEMENT..."
 
 st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 
@@ -31,27 +31,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 3. STATUS ---
-tool_count = 0
+ready = False
 if os.path.exists(BIN_PATH):
-    tool_count = len([f for f in os.listdir(BIN_PATH) if os.path.isfile(os.path.join(BIN_PATH, f))])
-ready = tool_count >= 4
+    ready = len(os.listdir(BIN_PATH)) >= 4
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
     if ready:
-        st.markdown(f'<div class="status-panel online"><b>SYSTEMS ONLINE</b><br>{tool_count} TOOLS</div>', unsafe_allow_html=True)
+        st.markdown('<div class="status-panel online"><b>SYSTEMS ONLINE</b></div>', unsafe_allow_html=True)
     else:
-        st.error(f"OFFLINE ({tool_count}/4)")
+        st.error("OFFLINE - PRIME REQUIRED")
 
     if st.button("PRIME ELITE TOOLS", width="stretch"):
         with st.spinner("📥 Priming..."):
             os.makedirs(BIN_PATH, exist_ok=True)
             script_path = os.path.join(CWD, "powers.sh")
-            # Scrub Windows line endings and set permissions
             subprocess.run(["sed", "-i", "s/\\r$//", script_path])
             subprocess.run(["chmod", "+x", script_path])
-            subprocess.run(["bash", script_path, "prime"], capture_output=True)
+            subprocess.run(["/bin/bash", script_path, "prime"], capture_output=True)
             st.rerun()
 
     st.divider()
@@ -73,13 +71,11 @@ with col_in:
     
     if st.button("FIRE RED KRYPTONITE GUN", width="stretch", type="primary"):
         script_path = os.path.join(CWD, "powers.sh")
-        
-        # Pre-execution cleanup
         subprocess.run(["chmod", "+x", script_path])
         subprocess.run(["sed", "-i", "s/\\r$//", script_path])
 
         if tn and ru:
-            st.session_state['terminal_logs'] = f"--- STRIKE INITIALIZED: {tn} ---\n"
+            st.session_state['terminal_logs'] = f"--- DEBUG STRIKE INITIALIZED: {tn} ---\n"
             term_display = st.empty()
             
             env = os.environ.copy()
@@ -87,22 +83,22 @@ with col_in:
             env.update({
                 "IN_SCOPE": str(is_scope), "OUT_SCOPE": str(os_scope),
                 "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
-                "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
-                "PYTHONUNBUFFERED": "1" # Force environment to flush
+                "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0"
             })
 
-            # RUNNING WITHOUT 'UNBUFFER' TO PREVENT CRASH
+            # --- THE X-RAY FIX ---
+            # We add '-x' to the bash call. This prints EVERY command to stderr.
+            # Since we capture stderr, we will see EXACTLY where it stops.
             proc = subprocess.Popen(
-                ["bash", script_path, "strike", str(ru), str(tn)],
+                ["/bin/bash", "-x", script_path, "strike", str(ru), str(tn)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 env=env,
                 cwd=CWD,
-                bufsize=1 # Line-buffered for real-time output
+                bufsize=1
             )
 
-            # THE STREAMING LOOP
             while True:
                 line = proc.stdout.readline()
                 if not line and proc.poll() is not None:
@@ -111,9 +107,16 @@ with col_in:
                     st.session_state['terminal_logs'] += line
                     term_display.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
             
-            proc.wait()
-            st.success(f"Mission {tn} Complete.")
+            rc = proc.wait()
+            st.session_state['terminal_logs'] += f"\n[DEBUG] PROCESS ENDED WITH CODE: {rc}\n"
+            term_display.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
+            
+            if rc == 0:
+                st.success(f"Mission {tn} Complete.")
+            else:
+                st.error(f"Strike failed with exit code {rc}. Check logs above.")
 
 with col_term:
     st.subheader("Live Tactical Feed")
     st.markdown(f'<div class="terminal-box">{st.session_state["terminal_logs"]}</div>', unsafe_allow_html=True)
+    
