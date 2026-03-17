@@ -1,10 +1,15 @@
-import streamlit as st
+\import streamlit as st
 import subprocess
 import os
 import sqlite3
 import pandas as pd
 import time
 from datetime import datetime
+
+# --- 2026 PATH INJECTION ---
+# Ensures binaries in /tmp/bin are prioritized even in locked environments
+if "/tmp/bin" not in os.environ["PATH"]:
+    os.environ["PATH"] = "/tmp/bin" + os.pathsep + os.environ["PATH"]
 
 # --- DATABASE ENGINE ---
 def init_db():
@@ -36,6 +41,7 @@ st.markdown("""
     .sidebar-stat { background-color: #1a1a1a; border: 1px solid #444; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
     .stat-val { color: #ff0000; font-weight: bold; font-size: 20px; }
     .telemetry-card { background-color: #000; border: 1px solid #ff0000; padding: 15px; color: #ff0000; height: 400px; overflow-y: auto; font-size: 12px; }
+    .stButton>button { background-color: #ff0000; color: white; font-weight: bold; width: 100%; border: none; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -69,9 +75,11 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🛠️ KRYPTONIAN ARMORY")
     if st.button("PRIME ELITE WEAPONS"):
-        with st.spinner("Refining Binaries..."):
-            subprocess.run(["bash", "powers.sh", "prime"])
-        st.success("Armory: ELITE STATUS")
+        with st.spinner("Extracting Weaponry..."):
+            # Use universal extraction via powers.sh
+            result = subprocess.run(["bash", "powers.sh", "prime"], capture_output=True, text=True)
+            st.code(result.stdout)
+        st.success("Armory Status: ELITE")
     
     st.markdown("---")
     st.markdown("### 🕵️ SHADOW ARCHIVE")
@@ -79,7 +87,7 @@ with st.sidebar:
     ports = st.toggle("GRAPPLING HOOK", value=False)
 
 # --- MAIN HUD ---
-st.markdown('<div class="welcome-hud"><h1>WELCOME SUPER//MAN</h1><p style="color:#ff0000; letter-spacing:2px;">NEURAL LINK: ELITE | STATUS: OPERATIONAL</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="welcome-hud"><h1>WELCOME SUPER//MAN</h1><p style="color:#ff0000; letter-spacing:2px;">NEURAL LINK: ELITE | ARCHIVE: ACTIVE</p></div>', unsafe_allow_html=True)
 
 t1, t2 = st.tabs(["🎯 ENGAGEMENT", "🗄️ TARGET LEDGER"])
 
@@ -87,7 +95,7 @@ with t1:
     c1, c2 = st.columns([1, 2])
     with c1:
         st.subheader("Mission Brief")
-        target = st.text_input("🎯 TARGET")
+        target = st.text_input("🎯 TARGET", placeholder="example.com")
         in_scope = st.text_input("✓ IN-SCOPE", value=target.split('.')[-2] + '.' + target.split('.')[-1] if '.' in target else "")
         
         if st.button("FIRE RED KRYPTONITE GUN"):
@@ -110,12 +118,13 @@ with t1:
                         log_to_ledger(target, "CRITICAL", line.strip(), time.time() - start_t)
                 p.wait()
             else:
-                st.error("SCOPE BREACH.")
+                st.error("SCOPE BREACH DETECTED.")
 
 with t2:
     st.subheader("Intelligence Ledger")
     conn = sqlite3.connect('red_kryptonite_ledger.db')
     df = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
     conn.close()
-    # 2026 Update: stretch instead of use_container_width
+    
+    # Updated 2026 syntax: width='stretch' replaces use_container_width=True
     st.dataframe(df, width='stretch')
