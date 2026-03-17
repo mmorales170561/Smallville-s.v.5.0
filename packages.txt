@@ -2,3 +2,4 @@ git
 curl
 wget
 ca-certificates
+libpcap0.8
