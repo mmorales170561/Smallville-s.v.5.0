@@ -4,57 +4,35 @@ export PATH=$PATH:$BIN_DIR
 
 case "$1" in
     prime)
-        # (Download logic for your 7 elite tools)
+        # (Prime logic here)
         ;;
     strike)
-        # SCOPE CLEANING
-        CLEAN_IN=$(echo "$IN_SCOPE" | tr ',' '\n' | tr ' ' '\n' | grep -v "^$")
-        RAW_LIST=$( (echo "$2"; echo "$CLEAN_IN") | sort -u | grep -v "^$" )
-        CLEAN_OUT=$(echo "$OUT_SCOPE" | tr ',' '\n' | tr ' ' '\n' | grep -v "^$")
-        if [ -n "$CLEAN_OUT" ]; then
-            PATTERN=$(echo "$CLEAN_OUT" | paste -sd "|" -)
-            FINAL_LIST=$(echo "$RAW_LIST" | grep -v -E "$PATTERN")
-        else
-            FINAL_LIST="$RAW_LIST"
-        fi
-
-        # PHASE 1: MAPPING
-        if [ "$RUN_P1" == "1" ]; then
-            echo ">> [PHASE 1] SCARLET CEREBRO..."
-            echo "$FINAL_LIST" | $BIN_DIR/subfinder -silent | $BIN_DIR/httpx -silent -title
-        fi
-
-        # PHASE 2: ARCHIVE
-        if [ "$RUN_P2" == "1" ]; then
-            echo ">> [PHASE 2] SHADOW ARCHIVE..."
-            echo "$FINAL_LIST" | $BIN_DIR/gau --subs --threads 10 2>/dev/null | head -n 15
-        fi
-
-       # PHASE 3: GRAPPLING HOOK (REPAIRED)
+        # SCOPE CLEANING (Omitted for brevity - keep your existing code)
+        
+        # PHASE 3: GRAPPLING HOOK (FIXED)
         if [ "$RUN_P3" == "1" ]; then
-            echo ">> [PHASE 3] GRAPPLING HOOK..."
-            # Using a manual list of the top 20 ports instead of the buggy -top-ports flag
-            TOP_20="80,443,8080,8443,21,22,25,53,110,143,445,3306,3389,5900,6379,9000,9090,9200,9443,10000"
-            echo "$FINAL_LIST" | $BIN_DIR/naabu -p $TOP_20 -silent -rate 1000
+            echo ">> [PHASE 3] GRAPPLING HOOK ($PORT_PROFILE)..."
+            
+            case "$PORT_PROFILE" in
+                "Top 20 (Ghost)")
+                    PORTS="80,443,8080,8443,21,22,25,53,110,143,445,3306,3389,5900,6379,9000,9090,9200,9443,10000"
+                    ;;
+                "Top 100 (Standard)")
+                    PORTS="top-100" # Naabu supports top-100/top-1000 directly
+                    ;;
+                "Top 1000 (Full)")
+                    PORTS="top-1000"
+                    ;;
+            esac
+
+            # Use -tp for top-100/1000, but -p for manual lists
+            if [[ "$PORTS" == "top-"* ]]; then
+                echo "$FINAL_LIST" | $BIN_DIR/naabu -tp ${PORTS#top-} -silent -rate 1000
+            else
+                echo "$FINAL_LIST" | $BIN_DIR/naabu -p $PORTS -silent -rate 1000
+            fi
         fi
 
-        # PHASE 4: STRIKE
-        if [ "$RUN_P4" == "1" ]; then
-            echo ">> [PHASE 4] FIRING RED KRYPTONITE..."
-            echo "$FINAL_LIST" | $BIN_DIR/httpx -silent | $BIN_DIR/nuclei -silent -ni -severity critical
-            echo "$FINAL_LIST" | $BIN_DIR/httpx -silent | $BIN_DIR/mantra -silent
-        fi
-
-        # DATABASE LOGGING
-        python3 -c "
-import sqlite3, datetime
-conn = sqlite3.connect('red_kryptonite_ledger.db')
-c = conn.cursor()
-c.execute('CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY, timestamp TEXT, target TEXT, intel TEXT)')
-c.execute(\"INSERT INTO ledger (timestamp, target, intel) VALUES (?, ?, ?)\", 
-          (datetime.datetime.now().strftime('%Y-%m-%d %H:%M'), '$3', 'Strike Successful'))
-conn.commit()
-conn.close()
-"
+        # ... (Rest of your phases) ...
         ;;
 esac
