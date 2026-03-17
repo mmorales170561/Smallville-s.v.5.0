@@ -1,12 +1,13 @@
 #!/bin/bash
 export PATH=$PATH:/tmp/bin
 
-# Identity Rotation
+# Identity
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
-# Scope Protection
+# --- SCOPE ENFORCEMENT ---
+# If the target ($2) does not contain the scope string, kill the process.
 if [[ ! -z "$IN_SCOPE" && "$2" != *"$IN_SCOPE"* ]]; then
-    echo ">> [BLOCK] SCOPE VIOLATION ON $2"
+    echo "[!] ERROR: ATTEMPTED SCAN ON $2 IS OUT OF SCOPE ($IN_SCOPE)"
     exit 1
 fi
 
@@ -20,10 +21,5 @@ case "$1" in
     vuln_hunt)
         nuclei -ut -silent
         subfinder -d "$2" -silent | httpx -silent | nuclei -silent -severity critical,high -header "User-Agent: $UA" -rl 5
-        ;;
-    nuclear)
-        subfinder -d "$2" -silent | naabu -top-ports 50 -silent -rate 50
-        sleep 5
-        subfinder -d "$2" -silent | httpx -silent | nuclei -silent -severity info,low,medium,high,critical -rl 5
         ;;
 esac
