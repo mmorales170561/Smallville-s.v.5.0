@@ -23,7 +23,7 @@ st.markdown("""
     .terminal-box { 
         background-color: #000; border: 1px solid #ff0000; padding: 20px; 
         color: #ff0000; font-family: 'Courier New', monospace;
-        white-space: pre-wrap; height: 400px; overflow-y: auto;
+        white-space: pre-wrap; height: 450px; overflow-y: auto;
     }
     .status-panel { padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px; border: 1px solid #333; }
     </style>
@@ -38,48 +38,36 @@ def init_db():
     conn.commit()
     conn.close()
 
+def parse_vulns(text):
+    crit = len(re.findall(r"\[critical\]", text, re.IGNORECASE))
+    high = len(re.findall(r"\[high\]", text, re.IGNORECASE))
+    return crit, high
+
 init_db()
 
-# --- 4. SIDEBAR ARMORY ---
+# --- 4. SIDEBAR ARMORY & STATUS ---
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
     
-    # CHECK IF TOOLS EXIST IN BIN
-    essential_tools = ["nuclei", "naabu", "subfinder", "httpx"]
-    tools_found = all([os.path.exists(f"/tmp/bin/{tool}") for tool in essential_tools])
+    # Ready-Check for essential tools
+    tools = ["nuclei", "naabu", "subfinder", "httpx"]
+    ready = all([os.path.exists(f"/tmp/bin/{t}") for t in tools])
     
-    if tools_found:
-        st.markdown(f'''
-            <div class="status-panel" style="background-color: rgba(0, 255, 65, 0.1); border-color: #00ff41;">
-                <h3 style="color: #00ff41; margin:0;">SYSTEMS ONLINE</h3>
-                <code style="color: #00ff41;">READY TO FIRE</code><br>
-                <small style="color: #888;">Last Prime: {st.session_state["last_prime"]}</small>
-            </div>
-        ''', unsafe_allow_html=True)
+    if ready:
+        st.markdown(f'''<div class="status-panel" style="background-color: rgba(0,255,65,0.1); border-color: #00ff41;">
+            <h3 style="color: #00ff41; margin:0;">SYSTEMS ONLINE</h3>
+            <small style="color: #888;">Armory Primed: {st.session_state["last_prime"]}</small>
+        </div>''', unsafe_allow_html=True)
     else:
-        st.markdown('''
-            <div class="status-panel" style="background-color: rgba(255, 234, 0, 0.1); border-color: #ffea00;">
-                <h3 style="color: #ffea00; margin:0;">SYSTEMS OFFLINE</h3>
-                <code style="color: #ffea00;">ARMORY EMPTY</code>
-            </div>
-        ''', unsafe_allow_html=True)
+        st.markdown('''<div class="status-panel" style="background-color: rgba(255,234,0,0.1); border-color: #ffea00;">
+            <h3 style="color: #ffea00; margin:0;">SYSTEMS OFFLINE</h3>
+            <code style="color: #ffea00;">RE-PRIME REQUIRED</code>
+        </div>''', unsafe_allow_html=True)
 
     if st.button("PRIME ELITE TOOLS", use_container_width=True):
-        with st.spinner("📦 Fetching Kryptonian Tech..."):
-            # This triggers the 'prime' case in your powers.sh
-            result = subprocess.run(["bash", "powers.sh", "prime"], capture_output=True, text=True)
-            if result.returncode == 0:
-                st.session_state["last_prime"] = datetime.now().strftime("%H:%M:%S")
-                st.toast("Armory Primed!", icon="⚔️")
-                time.sleep(1)
-                st.rerun()
-            else:
-                st.error("Prime Failed. Check Debug Mode.")
-
-    st.divider()
-    if st.button("☢️ WIPE DATABASE", help="Purge logs and reset schema"):
-        if os.path.exists('red_kryptonite_ledger.db'):
-            os.remove('red_kryptonite_ledger.db')
+        with st.spinner("📦 Fetching Tech..."):
+            subprocess.run(["bash", "powers.sh", "prime"], capture_output=True)
+            st.session_state["last_prime"] = datetime.now().strftime("%H:%M:%S")
             st.rerun()
 
     st.divider()
@@ -95,4 +83,38 @@ with st.sidebar:
 st.title("SUPER//MAN CONTROL CENTER")
 t1, t2, t3 = st.tabs(["🎯 ENGAGEMENT", "🗄️ MISSION LEDGER", "📑 MISSION ARCHIVE"])
 
-# ... (Engagement, Ledger, and Archive logic remains consistent with v36.0)
+with t1:
+    # --- RESTORED INPUT SECTIONS ---
+    col_input, col_term = st.columns([1, 2.2])
+    
+    with col_input:
+        st.subheader("Mission Brief")
+        target_name = st.text_input("🎯 TARGET NAME", placeholder="e.g. Project Smallville")
+        root_url = st.text_input("🔗 ROOT DOMAIN", placeholder="example.com")
+        in_scope = st.text_area("✓ IN-SCOPE ASSETS", placeholder="api.example.com, dev.example.com")
+        out_scope = st.text_area("✗ OUT-OF-SCOPE", placeholder="legal.example.com")
+        
+        st.divider()
+        
+        if st.button("FIRE RED KRYPTONITE GUN", use_container_width=True, type="primary"):
+            if not ready:
+                st.warning("Armory is empty. Prime tools in sidebar first.")
+            elif root_url and target_name:
+                prog = st.progress(0, text="Sequence Initialized...")
+                term = st.empty()
+                
+                strike_env = os.environ.copy()
+                strike_env.update({
+                    "IN_SCOPE": in_scope, "OUT_SCOPE": out_scope, 
+                    "RUN_P1": "1" if p1 else "0", "RUN_P2": "1" if p2 else "0",
+                    "RUN_P3": "1" if p3 else "0", "RUN_P4": "1" if p4 else "0",
+                    "DEBUG": "1" if debug_mode else "0", "PORT_PROFILE": port_profile
+                })
+                
+                p = subprocess.Popen(["bash", "powers.sh", "strike", root_url, target_name], 
+                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=strike_env, bufsize=1)
+                
+                full_rep = ""
+                for line in iter(p.stdout.readline, ''):
+                    full_rep += line
+                    if "PHASE 1" in
