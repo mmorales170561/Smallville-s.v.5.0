@@ -7,7 +7,7 @@ import time
 import re
 from datetime import datetime
 
-# --- 1. ENVIRONMENT ---
+# --- 1. ENVIRONMENT & PERSISTENCE ---
 if "/tmp/bin" not in os.environ["PATH"]:
     os.environ["PATH"] = "/tmp/bin" + os.pathsep + os.environ["PATH"]
 
@@ -22,27 +22,21 @@ st.markdown("""
     .terminal-box { 
         background-color: #000; border: 1px solid #ff0000; padding: 20px; 
         color: #ff0000; font-family: 'Courier New', monospace;
-        white-space: pre-wrap; height: 500px; overflow-y: auto;
+        white-space: pre-wrap; height: 400px; overflow-y: auto;
     }
-    .vuln-badge { padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
+    .report-card { background-color: #111; border: 1px solid #ffea00; padding: 15px; color: #ffea00; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. DATABASE & ANALYTICS ---
-def init_db():
+# --- 3. DATABASE HELPERS ---
+def get_db():
     conn = sqlite3.connect('red_kryptonite_ledger.db')
-    conn.execute('''CREATE TABLE IF NOT EXISTS ledger 
-                    (id INTEGER PRIMARY KEY, timestamp TEXT, target TEXT, intel TEXT, 
-                     report TEXT, crit_count INTEGER, high_count INTEGER)''')
-    conn.commit()
-    conn.close()
+    return conn
 
 def parse_vulns(text):
     crit = len(re.findall(r"\[critical\]", text, re.IGNORECASE))
     high = len(re.findall(r"\[high\]", text, re.IGNORECASE))
     return crit, high
-
-init_db()
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
@@ -96,28 +90,5 @@ with t1:
                 prog.progress(100)
                 c_cnt, h_cnt = parse_vulns(full_rep)
                 
-                conn = sqlite3.connect('red_kryptonite_ledger.db')
-                conn.execute("INSERT INTO ledger (timestamp, target, intel, report, crit_count, high_count) VALUES (?, ?, ?, ?, ?, ?)",
-                             (datetime.now().strftime('%Y-%m-%d %H:%M'), target_name, "Complete", full_rep, c_cnt, h_cnt))
-                conn.commit()
-                conn.close()
-                st.rerun()
-
-with t2:
-    st.subheader("🗄️ INTELLIGENCE LEDGER")
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    df = pd.read_sql_query("SELECT id, timestamp, target, crit_count, high_count FROM ledger ORDER BY id DESC", conn)
-    conn.close()
-    st.dataframe(df, use_container_width=True, hide_index=True)
-
-with t3:
-    st.subheader("📑 MISSION ARCHIVE")
-    search = st.text_input("🔍 Search Logs", "").lower()
-    conn = sqlite3.connect('red_kryptonite_ledger.db')
-    reps = pd.read_sql_query("SELECT * FROM ledger ORDER BY id DESC", conn)
-    conn.close()
-    
-    for _, row in reps.iterrows():
-        if search in row['target'].lower() or search in row['report'].lower():
-            with st.expander(f"MISSION: {row['target']} | 🔥 {row['crit_count']} CRIT"):
-                st.markdown(f'<div class="terminal-box" style="height:300px;">{row["report"]}</div>', unsafe_allow_html=True)
+                conn = get_db()
+                conn.execute("INSERT INTO ledger (timestamp, target, intel, report, crit_count
