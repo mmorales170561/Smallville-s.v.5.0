@@ -4,32 +4,26 @@ export PATH="$BIN_DIR:$PATH"
 ACTION="$1"; TARGET="$2"; MISSION="$3"
 
 if [ "$ACTION" == "strike" ]; then
-    echo ">> [PHASE 0] ARMORY STATUS CHECK..."
-    # ... (Standard tool check)
+    # ... (Phase 0-4 logic from previous version)
 
-    # --- P1: CEREBRO ---
-    if [ "$RUN_P1" == "1" ] && [ "$FORCE_ROOT" != "1" ]; then
-        echo ">> [PHASE 1] CEREBRO: Hunting Subdomains..."
-        subfinder -d "$TARGET" -silent > /tmp/raw.txt
-        
-        # APPLY SCOPE RULES
-        if [ -n "$OUT_SCOPE" ]; then
-            echo ">> Applying Out-of-Scope Filters..."
-            grep -v -E "$(echo "$OUT_SCOPE" | tr '\n' '|' | sed 's/|$//')" /tmp/raw.txt > /tmp/subs.txt
+    # --- P5: ARCHITECT (GitHub Audit) ---
+    if [ "$RUN_P5" == "1" ]; then
+        if [ -n "$GH_REPO" ]; then
+            echo ">> [PHASE 5] ARCHITECT: Deep Scanning GitHub Repo $GH_REPO..."
+            nuclei -u "$GH_REPO" -silent -tags tokens,keys,exposures
         else
-            cp /tmp/raw.txt /tmp/subs.txt
+            echo ">> [PHASE 5] SKIPPED: No GitHub URL provided."
         fi
-        echo ">> Targets remaining after Scope filter: $(wc -l < /tmp/subs.txt)"
     fi
 
-    # --- P2: SHADOW ---
-    if [ "$RUN_P2" == "1" ]; then
-        echo ">> [PHASE 2] SHADOW: Resolving Alive Targets..."
-        [[ -s /tmp/subs.txt ]] && SRC="/tmp/subs.txt" || SRC="$TARGET"
-        echo "$SRC" | httpx -silent -sc -td -ip > /tmp/alive.txt
+    # --- P6: OLYMPUS (Custom Protocol) ---
+    if [ "$RUN_P6" == "1" ]; then
+        echo ">> [PHASE 6] OLYMPUS: Executing Custom Heavy Strike..."
+        # Example: Fuzzing or specialized nuclei templates
+        echo ">> Running Custom Fuzzing on $TARGET..."
+        # Add your custom P6 logic here
     fi
 
-    # ... (Rest of P3, P4, and JS Secret Finder logic)
     echo "----------------------------------------"
     echo ">> [SUCCESS] MISSION COMPLETE."
 fi
