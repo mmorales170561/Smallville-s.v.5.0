@@ -48,7 +48,6 @@ init_db()
 # --- 4. SIDEBAR ARMORY & STATUS ---
 with st.sidebar:
     st.header("🛠️ WEAPON SYSTEM")
-    
     tools = ["nuclei", "naabu", "subfinder", "httpx"]
     ready = all([os.path.exists(f"/tmp/bin/{t}") for t in tools])
     
@@ -68,16 +67,3 @@ with st.sidebar:
             subprocess.run(["bash", "powers.sh", "prime"], capture_output=True)
             st.session_state["last_prime"] = datetime.now().strftime("%H:%M:%S")
             st.rerun()
-
-    st.divider()
-    debug_mode = st.toggle("DEBUG MODE", value=False)
-    st.header("⚡ PHASE TOGGLES")
-    p1 = st.toggle("P1: CEREBRO", value=True)
-    p2 = st.toggle("P2: SHADOW", value=True)
-    p3 = st.toggle("P3: HOOK", value=True)
-    p4 = st.toggle("P4: STRIKE", value=True)
-    port_profile = st.selectbox("PORT PROFILE", ["Top 20 (Ghost)", "Top 100", "Top 1000"])
-
-# --- 5. MAIN HUD ---
-st.title("SUPER//MAN CONTROL CENTER")
-t1, t2, t3 = st.tabs(["🎯
