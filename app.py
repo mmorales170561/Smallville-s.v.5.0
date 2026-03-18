@@ -10,7 +10,7 @@ st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 BIN_PATH = "/tmp/smallville_bin"
 SCRIPT_PATH = os.path.join(os.getcwd(), "powers.sh")
 
-if 'logs' not in st.session_state: st.session_state.logs = ">> SYSTEM READY."
+if 'logs' not in st.session_state: st.session_state.logs = ">> SYSTEM READY. CONFIGURE MISSION."
 if 'vuln_data' not in st.session_state: st.session_state.vuln_data = []
 
 # --- 3. UI STYLING ---
@@ -20,13 +20,14 @@ st.markdown("""
     .terminal-box { 
         background-color: #000; border: 1px solid #ff0000; padding: 15px; 
         color: #ff0000; font-family: 'Courier New', monospace;
-        white-space: pre-wrap; height: 450px; overflow-y: auto; font-size: 11px;
-        box-shadow: inset 0 0 15px rgba(255,0,0,0.3);
+        white-space: pre-wrap; height: 500px; overflow-y: auto; font-size: 11px;
+        box-shadow: inset 0 0 15px rgba(255,0,0,0.3); border-radius: 5px;
     }
+    .stMetric { background: #111; padding: 10px; border-radius: 5px; border: 1px solid #333; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. THE ROBUST LOADER ---
+# --- 4. ARMORY LOADER ---
 def prime_armory():
     URLS = {
         "subfinder": "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip",
@@ -34,25 +35,19 @@ def prime_armory():
         "nuclei": "https://github.com/projectdiscovery/nuclei/releases/download/v3.2.9/nuclei_3.2.9_linux_amd64.zip",
         "katana": "https://github.com/projectdiscovery/katana/releases/download/v1.1.0/katana_1.1.0_linux_amd64.zip"
     }
-    
     os.makedirs(BIN_PATH, exist_ok=True)
-    
-    # Using st.status to prevent UI hanging
     with st.sidebar.status("🔓 Unlocking Armory...", expanded=True) as status:
         for name, url in URLS.items():
             try:
                 status.write(f"Downloading {name}...")
-                r = requests.get(url, timeout=60, stream=True) # Increased timeout
+                r = requests.get(url, timeout=60)
                 data = io.BytesIO(r.content)
                 target = os.path.join(BIN_PATH, name)
-                
-                # Check for ZIP
                 if zipfile.is_zipfile(data):
                     with zipfile.ZipFile(data) as z:
                         for f in z.namelist():
                             if f.endswith(name):
                                 with open(target, "wb") as b: b.write(z.read(f))
-                # Check for TAR/GZ
                 else:
                     data.seek(0)
                     try:
@@ -62,19 +57,13 @@ def prime_armory():
                                 if m.name.endswith(name):
                                     with open(target, "wb") as b: b.write(t.extractfile(m).read())
                     except:
-                        # Direct Binary fallback
                         data.seek(0)
                         with open(target, "wb") as b: b.write(data.read())
-                
                 if os.path.exists(target):
                     os.chmod(target, 0o755)
                     status.write(f"✅ {name} Ready")
-                else:
-                    status.write(f"❌ {name} Failed to extract")
-            except Exception as e:
-                status.write(f"⚠️ Error {name}: {str(e)[:50]}")
-        
-        status.update(label="⚔️ Armory Fully Loaded!", state="complete", expanded=False)
+            except Exception as e: status.write(f"⚠️ {name} Error: {e}")
+        status.update(label="⚔️ Armory Loaded!", state="complete", expanded=False)
 
 # --- 5. SIDEBAR ---
 with st.sidebar:
@@ -90,12 +79,12 @@ with st.sidebar:
 
     st.divider()
     st.subheader("⚡ TACTICAL PHASES")
-    p1 = st.toggle("P1: CEREBRO", True)
-    p2 = st.toggle("P2: SHADOW", True)
-    p3 = st.toggle("P3: KATANA", True)
-    p4 = st.toggle("P4: STRIKE", True)
-    p5 = st.toggle("P5: ARCHITECT", False)
-    p6 = st.toggle("P6: OLYMPUS", True)
+    p1 = st.toggle("P1: CEREBRO (Subdomain)", True)
+    p2 = st.toggle("P2: SHADOW (Alive Check)", True)
+    p3 = st.toggle("P3: KATANA (Deep Crawl)", True)
+    p4 = st.toggle("P4: STRIKE (Vuln Scan)", True)
+    p5 = st.toggle("P5: ARCHITECT (GitHub)", False)
+    p6 = st.toggle("P6: OLYMPUS (Heavy Fuzz)", True)
     
     st.divider()
     force_root = st.toggle("🚀 FORCE ROOT SCAN", False)
@@ -103,10 +92,10 @@ with st.sidebar:
 
 # --- 6. MAIN HUD ---
 st.title("SUPER//MAN: GOD-MODE HUD")
-col_in, col_term = st.columns([1.1, 2])
+col_in, col_term = st.columns([1.2, 2])
 
 with col_in:
-    st.subheader("📝 Mission Brief")
+    st.subheader("Mission Brief")
     mission_name = st.text_input("🎯 MISSION NAME", f"S.V_{datetime.now().strftime('%H%M')}")
     target_url = st.text_input("🔗 TARGET URL(S)", "syfe.com, x.com")
     
@@ -114,7 +103,6 @@ with col_in:
         in_scope = st.text_area("✓ IN-SCOPE", "syfe.com", height=60)
         out_scope = st.text_area("✗ OUT-SCOPE", "api.syfe.com", height=60)
     
-    # Visual Metrics
     v_counts = {"CRIT": 0, "HIGH": 0, "MED": 0}
     for v in st.session_state.vuln_data:
         for lvl in v_counts.keys():
@@ -137,7 +125,7 @@ with col_in:
             "RUN_P5": "1" if p5 else "0", "RUN_P6": "1" if p6 else "0",
             "FORCE_ROOT": "1" if force_root else "0",
             "RUN_STEALTH": "1" if stealth else "0",
-            "OUT_SCOPE": out_scope
+            "OUT_SCOPE": out_scope, "IN_SCOPE": in_scope
         })
         
         subprocess.run(["chmod", "+x", SCRIPT_PATH])
@@ -153,5 +141,9 @@ with col_in:
             proc.wait()
 
 with col_term:
+    if st.session_state.vuln_data:
+        st.subheader("⚠️ TACTICAL FINDINGS")
+        st.table(pd.DataFrame(st.session_state.vuln_data, columns=["Discovery"]))
+    
     if 'term_placeholder' not in locals():
         st.markdown(f'<div class="terminal-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
