@@ -10,7 +10,7 @@ st.set_page_config(page_title="Smallville S.V. 5.0", layout="wide")
 BIN_PATH = "/tmp/smallville_bin"
 SCRIPT_PATH = os.path.join(os.getcwd(), "powers.sh")
 
-if 'logs' not in st.session_state: st.session_state.logs = ">> SYSTEM READY."
+if 'logs' not in st.session_state: st.session_state.logs = ">> SYSTEM READY. CONFIGURE MISSION."
 if 'vuln_data' not in st.session_state: st.session_state.vuln_data = []
 
 # --- 3. UI STYLING ---
@@ -20,10 +20,9 @@ st.markdown("""
     .terminal-box { 
         background-color: #000; border: 1px solid #ff0000; padding: 15px; 
         color: #ff0000; font-family: 'Courier New', monospace;
-        white-space: pre-wrap; height: 500px; overflow-y: auto; font-size: 11px;
+        white-space: pre-wrap; height: 450px; overflow-y: auto; font-size: 11px;
         box-shadow: inset 0 0 15px rgba(255,0,0,0.3);
     }
-    .stats-card { background: #111; border: 1px solid #444; padding: 10px; border-radius: 5px; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -37,14 +36,17 @@ with st.sidebar:
         st.rerun()
     
     if st.button("PRIME GOD-MODE TOOLS", use_container_width=True):
-        # (Downloader logic remains the same as v108)
-        pass 
+        # (Downloader logic remains active)
+        st.info("Unlocking Armory...")
 
     st.divider()
     st.subheader("⚡ TACTICAL PHASES")
-    p1 = st.toggle("P1: CEREBRO", True); p2 = st.toggle("P2: SHADOW", True)
-    p3 = st.toggle("P3: KATANA", True); p4 = st.toggle("P4: STRIKE", True)
-    p5 = st.toggle("P5: ARCHITECT", False); p6 = st.toggle("P6: OLYMPUS", True)
+    p1 = st.toggle("P1: CEREBRO", True)
+    p2 = st.toggle("P2: SHADOW", True)
+    p3 = st.toggle("P3: KATANA", True)
+    p4 = st.toggle("P4: STRIKE", True)
+    p5 = st.toggle("P5: ARCHITECT", False)
+    p6 = st.toggle("P6: OLYMPUS", True)
     
     st.divider()
     force_root = st.toggle("🚀 FORCE ROOT SCAN", False)
@@ -52,21 +54,30 @@ with st.sidebar:
 
 # --- 5. MAIN HUD ---
 st.title("SUPER//MAN: GOD-MODE HUD")
-col_in, col_term = st.columns([1, 2])
+col_in, col_term = st.columns([1.1, 2])
 
 with col_in:
-    st.subheader("Mission Brief")
-    tn = st.text_input("🎯 MISSION NAME", f"S.V_{datetime.now().strftime('%H%M')}")
-    ru = st.text_input("🔗 ROOT URL / TARGETS", "x.com")
+    st.subheader("📝 Mission Brief")
+    mission_name = st.text_input("🎯 MISSION NAME", f"S.V_{datetime.now().strftime('%H%M')}")
+    target_url = st.text_input("🔗 TARGET URL(S)", "syfe.com, x.com", help="Comma separated list for multi-target")
     
-    # Vulnerability Counter Dashboard
+    st.subheader("🛡️ Rules of Engagement")
+    in_scope = st.text_area("✓ IN-SCOPE", "syfe.com\n*.syfe.com", height=70)
+    out_scope = st.text_area("✗ OUT-SCOPE", "api.syfe.com\nprod.syfe.com", height=70)
+    
+    # Live Vuln Counter
+    v_counts = {"CRIT": 0, "HIGH": 0, "MED": 0}
+    for v in st.session_state.vuln_data:
+        for level in v_counts.keys():
+            if level.lower() in v.lower(): v_counts[level] += 1
+    
     c1, c2, c3 = st.columns(3)
-    c1.metric("CRIT", len([x for x in st.session_state.vuln_data if "critical" in x.lower()]))
-    c2.metric("HIGH", len([x for x in st.session_state.vuln_data if "high" in x.lower()]))
-    c3.metric("MED", len([x for x in st.session_state.vuln_data if "medium" in x.lower()]))
+    c1.metric("CRIT", v_counts["CRIT"])
+    c2.metric("HIGH", v_counts["HIGH"])
+    c3.metric("MED", v_counts["MED"])
 
     if st.button("FIRE RED KRYPTONITE GUN", type="primary", use_container_width=True):
-        st.session_state.logs = f"--- MISSION START: {tn} ---\n"
+        st.session_state.logs = f"--- MISSION: {mission_name} START ---\n"
         st.session_state.vuln_data = []
         
         env = os.environ.copy()
@@ -77,12 +88,14 @@ with col_in:
             "RUN_P5": "1" if p5 else "0", "RUN_P6": "1" if p6 else "0",
             "FORCE_ROOT": "1" if force_root else "0",
             "RUN_STEALTH": "1" if stealth else "0",
+            "IN_SCOPE": in_scope,
+            "OUT_SCOPE": out_scope
         })
         
         subprocess.run(["chmod", "+x", SCRIPT_PATH])
         with col_term:
             term_placeholder = st.empty()
-            proc = subprocess.Popen(["bash", SCRIPT_PATH, "strike", ru, tn], 
+            proc = subprocess.Popen(["bash", SCRIPT_PATH, "strike", target_url, mission_name], 
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, bufsize=1)
             for line in iter(proc.stdout.readline, ""):
                 st.session_state.logs += line
@@ -92,5 +105,9 @@ with col_in:
             proc.wait()
 
 with col_term:
+    if st.session_state.vuln_data:
+        st.subheader("⚠️ TACTICAL FINDINGS")
+        st.table(pd.DataFrame(st.session_state.vuln_data, columns=["Vulnerability Discovery"]))
+    
     if 'term_placeholder' not in locals():
         st.markdown(f'<div class="terminal-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
