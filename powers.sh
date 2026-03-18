@@ -3,27 +3,36 @@ BIN_DIR="/tmp/smallville_bin"
 export PATH="$BIN_DIR:$PATH"
 ACTION="$1"; TARGET="$2"; MISSION="$3"
 
+# --- 1. ENVIRONMENT & STEALTH ---
+if [ "$RUN_STEALTH" == "1" ]; then
+    RL="-rl 5 -c 2"
+else
+    RL="-c 20"
+fi
+
 if [ "$ACTION" == "strike" ]; then
-    # ... (Phase 0-4 logic from previous version)
+    # ... (Previous Phase 0-5 Logic) ...
 
-    # --- P5: ARCHITECT (GitHub Audit) ---
-    if [ "$RUN_P5" == "1" ]; then
-        if [ -n "$GH_REPO" ]; then
-            echo ">> [PHASE 5] ARCHITECT: Deep Scanning GitHub Repo $GH_REPO..."
-            nuclei -u "$GH_REPO" -silent -tags tokens,keys,exposures
-        else
-            echo ">> [PHASE 5] SKIPPED: No GitHub URL provided."
-        fi
-    fi
-
-    # --- P6: OLYMPUS (Custom Protocol) ---
+    # --- P6: OLYMPUS (Heavy Fuzzing) ---
     if [ "$RUN_P6" == "1" ]; then
-        echo ">> [PHASE 6] OLYMPUS: Executing Custom Heavy Strike..."
-        # Example: Fuzzing or specialized nuclei templates
-        echo ">> Running Custom Fuzzing on $TARGET..."
-        # Add your custom P6 logic here
+        echo ">> [PHASE 6] OLYMPUS: Executing Heavy Strike on $TARGET..."
+        
+        # Check for target list (from P2) or single target
+        [[ -s /tmp/alive.txt ]] && T_SRC="/tmp/alive.txt" || T_SRC="$TARGET"
+        
+        echo ">> [!] Commencing Param-Fuzzing & Vulnerability Scan..."
+        
+        # 1. Direct Nuclei Fuzzing (Uses very little disk space)
+        # Specifically targeting XSS, SQLi, and SSRF templates
+        cat "$T_SRC" | nuclei $RL -silent -tags fuzz,sqli,xss,ssrf -severity critical,high
+        
+        # 2. Sensitive File Discovery (The "Heavy" part)
+        echo ">> [!] Scanning for Hidden Configs & Backdoors..."
+        cat "$T_SRC" | nuclei $RL -silent -id backup-files,config-files,exposed-git,exposed-env
     fi
 
     echo "----------------------------------------"
     echo ">> [SUCCESS] MISSION COMPLETE."
+    # Cleanup to save your 2GB limit
+    rm -f /tmp/*.txt
 fi
