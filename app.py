@@ -1,4 +1,4 @@
-import st as st
+import streamlit as st
 # ... (imports remain the same) ...
 
 # --- 6. MAIN HUD ---
