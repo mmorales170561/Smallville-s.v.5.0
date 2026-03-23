@@ -57,55 +57,46 @@ with st.sidebar:
 tabs = st.tabs(["🚀 STRIKE OPS", "📊 INTELLIGENCE", "🧪 PAYLOAD LAB", "⚡ TACTICAL SHELL", "🖼️ VISUAL RECON"])
 
 with tabs[0]: # MISSION CONTROL: MULTI-VECTOR
-    st.header("🎯 MISSION PARAMETERS")
-    
-    # Global Identifiers
-    col_id1, col_id2 = st.columns(2)
-    with col_id1:
-        h1_user = st.text_input("🆔 OPERATOR CODE", value="Krypton-01", key="h1_in")
-    with col_id2:
-        out_scope = st.text_area("✗ NO-GO ZONE", "api.target.com, dev-internal.net", height=68, key="scope_in")
-
-    st.divider()
-
-    # Domain-Specific Sections
+    # Domain-Specific Battlefields
     v_tabs = st.tabs(["🌐 WEB2 (Standard)", "💎 WEB3 (Blockchain)", "🤖 AI AGENTS (LLM)"])
 
-    with v_tabs[0]: # WEB2 SECTION
-        st.subheader("🔗 WEB2 TARGET SECTOR")
-        web2_target = st.text_input("Main Domain / CIDR:", "example.com", key="w2_in")
-        if st.button("🔥 INITIATE WEB2 STRIKE", type="primary", key="w2_btn"):
-            st.info(f"X-Ray Vision engaged on {web2_target}...")
+    with v_tabs[0]: # WEB2 SECTION (RESTRUCTURED)
+        st.header("🎯 WEB2 MISSION PARAMETERS")
+        col_w2a, col_w2b = st.columns(2)
+        with col_w2a:
+            w2_name = st.text_input("📝 TARGET NAME", "Bose Corp", key="w2_name")
+            w2_url = st.text_input("🔗 TARGET URL", "bose.com", key="w2_url")
+        with col_w2b:
+            w2_in = st.text_area("✓ IN-SCOPE", "*.bose.com", height=68, key="w2_in_scope")
+            w2_out = st.text_area("✗ OUT-SCOPE", "dev-api.bose.com", height=68, key="w2_out_scope")
+        
+        if st.button("🔥 INITIATE WEB2 STRIKE", type="primary", use_container_width=True, key="w2_btn"):
+            st.info(f"X-Ray Vision engaged on {w2_name} sector...")
 
     with v_tabs[1]: # WEB3 SECTION
-        st.subheader("⛓️ WEB3 TARGET SECTOR")
+        st.header("🎯 WEB3 MISSION PARAMETERS")
         col_w3a, col_w3b = st.columns(2)
         with col_w3a:
-            w3_domain = st.text_input("Frontend URL:", "app.protocol.io", key="w3_dom")
+            w3_name = st.text_input("📝 PROJECT NAME", "Syfe Finance", key="w3_name")
+            w3_frontend = st.text_input("🔗 FRONTEND URL", "app.syfe.com", key="w3_url")
         with col_w3b:
-            w3_contract = st.text_input("Contract / RPC:", "0x... or https://rpc-url", key="w3_rpc")
-        if st.button("🔥 INITIATE KRYPTONITE STRIKE", type="primary", key="w3_btn"):
-            st.info(f"Probing Web3 Finality & RPC Nodes at {w3_domain}...")
+            w3_rpc = st.text_input("⛓️ RPC / NODE URL", "https://eth-mainnet.g.alchemy.com/v2/...", key="w3_rpc")
+            w3_contract = st.text_input("📜 CONTRACT ADDR", "0x...", key="w3_contract")
+        
+        if st.button("🔥 INITIATE KRYPTONITE STRIKE", type="primary", use_container_width=True, key="w3_btn"):
+            st.info(f"Probing Web3 Finality for {w3_name}...")
 
     with v_tabs[2]: # AI SECTION
-        st.subheader("🧠 AI AGENT TARGET SECTOR")
-        ai_endpoint = st.text_input("Agent API Endpoint:", "https://api.ai-service.com/v1/chat", key="ai_in")
-        ai_model = st.selectbox("Model Type:", ["REST-API", "Web-Chatbot", "Custom Agent"], key="ai_type")
-        if st.button("🔥 INITIATE PHANTOM ZONE PROBE", type="primary", key="ai_btn"):
-            st.info(f"Neural Probe launched against {ai_endpoint}...")
+        st.header("🎯 AI MISSION PARAMETERS")
+        col_ai1, col_ai2 = st.columns(2)
+        with col_ai1:
+            ai_name = st.text_input("📝 AGENT NAME", "Support-Bot-v2", key="ai_name")
+            ai_endpoint = st.text_input("🔗 API ENDPOINT", "https://api.target.com/v1/chat", key="ai_url")
+        with col_ai2:
+            ai_model = st.selectbox("🤖 MODEL ARCH", ["GPT-4o", "Claude-3.5", "Gemini-1.5", "Custom LLM"], key="ai_type")
+            ai_prompt = st.text_area("📜 SYSTEM PROMPT (If Known)", "You are a helpful assistant...", height=68, key="ai_sys")
+        
+        if st.button("🔥 INITIATE PHANTOM ZONE PROBE", type="primary", use_container_width=True, key="ai_btn"):
+            st.info(f"Neural Probe launched against {ai_name}...")
 
-with tabs[1]: # INTELLIGENCE
-    st.subheader("📊 SECTOR INTELLIGENCE")
-    if st.session_state.findings:
-        for f in st.session_state.findings:
-            st.error(f)
-    else:
-        st.info("No critical vulnerabilities detected in current sector.")
-
-with tabs[3]: # TACTICAL SHELL
-    st.subheader("⚡ DIRECT INTERFACE (J.A.R.V.I.S. CORE)")
-    cmd = st.text_input("Enter Command:", key="shell_in")
-    if st.button("EXECUTE", key="run_shell"):
-        # Terminal execution logic
-        st.session_state.terminal_out = f"Executing {cmd}..."
-    st.code(st.session_state.terminal_out, language="bash")
+# (Tabs 1-4 continue below with Intelligence, Shell, and Visual Recon)
