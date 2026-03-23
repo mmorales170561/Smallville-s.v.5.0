@@ -68,8 +68,8 @@ with tabs[0]: # MISSION CONTROL
    # --- 3. SIDEBAR CONTROLS ---
 with st.sidebar:
     st.title("🦸‍♂️ S.V. 8.5 APEX")
-    if st.button("🚀 PRIME GOD-MODE TOOLS", use_container_width=True):
-        prime_armory()
+   if st.button("🚀 PRIME GOD-MODE TOOLS", use_container_width=True, key="sidebar_prime_btn"):
+    prime_armory()
     
     st.divider()
     st.subheader("📡 PHASE TOGGLES")
