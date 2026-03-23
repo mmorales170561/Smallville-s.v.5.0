@@ -2,71 +2,70 @@ import streamlit as st
 import subprocess, os, requests, zipfile, io, shutil
 from datetime import datetime
 
-# --- 1. CORE CONFIG ---
-st.set_page_config(page_title="Smallville 8.5: Apex", layout="wide")
+# --- 1. STARK HUD STYLING (The JARVIS Theme) ---
+st.set_page_config(page_title="JARVIS: Stark Intelligence", layout="wide")
+
+st.markdown("""
+    <style>
+    .stApp { background-color: #0e1117; color: #00d4ff; }
+    [data-testid="stSidebar"] { background-color: #1a1c23; border-right: 2px solid #ffcc00; }
+    .stButton>button { background-color: #ffcc00; color: #000; border-radius: 5px; font-weight: bold; border: 1px solid #ffcc00; }
+    .stButton>button:hover { background-color: #00d4ff; color: #000; border: 1px solid #00d4ff; }
+    .stHeader { color: #ffcc00; font-family: 'Courier New', Courier, monospace; }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
+    .stTabs [data-baseweb="tab"] { background-color: #1a1c23; border: 1px solid #333; color: #00d4ff; border-radius: 5px 5px 0 0; }
+    .stTabs [aria-selected="true"] { background-color: #ffcc00 !important; color: #000 !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. CONFIG & STATE ---
 BIN_PATH = os.path.expanduser("~/.smallville_bin")
 SCRIPT_PATH = os.path.join(os.getcwd(), "powers.sh")
 
-# Initialize Session States (Prevents crashes if tabs load before data)
-state_keys = ["logs", "findings", "terminal_out", "p_recon", "p_js", "p_strike", "p_sto", "p_ai", "p_cloud", "p_oob", "p_visual"]
-for key in state_keys:
+for key in ["logs", "findings", "terminal_out", "p_recon", "p_js", "p_strike", "p_sto", "p_ai", "p_cloud", "p_oob", "p_visual"]:
     if key not in st.session_state:
         if key.startswith("p_"): st.session_state[key] = True
         elif key == "findings": st.session_state[key] = []
-        else: st.session_state[key] = ">> SYSTEM ONLINE."
+        else: st.session_state[key] = ">> JARVIS ONLINE. STANDING BY."
 
-# --- 2. THE ARMORY (Function) ---
-def prime_armory():
-    st.info("📦 Syncing System Engines...")
-    # (Installation logic remains the same)
-    st.success("⚔️ ARSENAL PRIMED.")
-
-# --- 3. SIDEBAR (The Control Center) ---
+# --- 3. SIDEBAR: STARK SYSTEMS ---
 with st.sidebar:
-    st.title("🦸‍♂️ S.V. 8.5 APEX")
+    st.header("⚡ STARK SYSTEMS")
+    st.image("https://upload.wikimedia.org/wikipedia/commons/a/a3/Stark_Industries_logo.png", width=200)
     
-    if st.button("🚀 PRIME GOD-MODE TOOLS", use_container_width=True, key="side_prime"):
-        prime_armory()
-    
-    st.divider()
-    st.subheader("📡 PHASE TOGGLES")
-    # Verified closed parentheses for all toggles
-    st.session_state.p_recon = st.toggle("P1-2: Recon", value=st.session_state.p_recon, key="t1")
-    st.session_state.p_js = st.toggle("P3: Headless JS", value=st.session_state.p_js, key="t2")
-    st.session_state.p_strike = st.toggle("P4: Nuclei", value=st.session_state.p_strike, key="t3")
-    st.session_state.p_sto = st.toggle("💥 Auto-Takeover", value=st.session_state.p_sto, key="t4")
-    st.session_state.p_ai = st.toggle("🧠 P7: AI Probes", value=st.session_state.p_ai, key="t5")
-    st.session_state.p_cloud = st.toggle("💎 P8: Web3/RPC", value=st.session_state.p_cloud, key="t6")
-    st.session_state.p_oob = st.toggle("🛰️ Blind OOB", value=st.session_state.p_oob, key="t7")
-    st.session_state.p_visual = st.toggle("P9: Visual Recon", value=st.session_state.p_visual, key="t8")
+    if st.button("🚀 ARMOR UP (Install Tools)", use_container_width=True, key="side_prime"):
+        # prime_armory() logic here
+        st.success("MARK-LXXXV SYSTEMS ARMED.")
     
     st.divider()
-    if st.button("🧹 PURGE WORKSPACE", use_container_width=True, key="side_purge"):
+    st.subheader("🛠️ HUD OVERLAY")
+    st.session_state.p_recon = st.toggle("🛰️ SATELLITE RECON (P1-2)", value=st.session_state.p_recon, key="t1")
+    st.session_state.p_js = st.toggle("🕵️‍♂️ ANALYSIS (P3/JS)", value=st.session_state.p_js, key="t2")
+    st.session_state.p_strike = st.toggle("🔥 REPULSOR BLAST (P4)", value=st.session_state.p_strike, key="t3")
+    st.session_state.p_ai = st.toggle("🧠 NEURAL PROBE (AI)", value=st.session_state.p_ai, key="t5")
+    st.session_state.p_cloud = st.toggle("💎 ARC REACTOR (Web3)", value=st.session_state.p_cloud, key="t6")
+    st.session_state.p_oob = st.toggle("📡 BLIND SENSORS (OOB)", value=st.session_state.p_oob, key="t7")
+    
+    st.divider()
+    if st.button("🧹 SELF-DESTRUCT (Purge)", use_container_width=True, key="side_purge"):
         if os.path.exists(BIN_PATH): shutil.rmtree(BIN_PATH)
-        st.session_state.logs = ">> SYSTEM WIPED."
         st.rerun()
 
-# --- 4. TABS & WORKSPACE (The Missing Section) ---
-# If the code above is correct, these tabs WILL appear.
-tabs = st.tabs(["🚀 Mission Control", "📊 Intelligence Desk", "🧪 Payload Lab", "⚡ Tactical Shell", "🖼️ Visual Recon"])
+# --- 4. HUD TABS (The Workspace) ---
+tabs = st.tabs(["🚀 STRIKE OPS", "📊 INTEL ANALYSIS", "🧪 ADVERSARIAL LAB", "⚡ J.A.R.V.I.S. TERMINAL", "🖼️ VISUAL HUD"])
 
-with tabs[0]: # MISSION CONTROL
-    st.subheader("🚀 Strike Configuration")
+with tabs[0]: # STRIKE OPS
+    st.subheader("🎯 MISSION CONFIGURATION")
     col1, col2 = st.columns(2)
     with col1:
-        target_url = st.text_input("🔗 TARGET URL", "syfe.com", key="target_in")
-        h1_user = st.text_input("🆔 H1 HANDLE", placeholder="your_h1_handle", key="h1_in")
+        target_url = st.text_input("🔗 TARGET VECTOR", "stark.com", key="target_in")
+        h1_user = st.text_input("🆔 OPERATOR ID", placeholder="Stark-001", key="h1_in")
     with col2:
-        out_scope = st.text_area("✗ OUT-SCOPE", "api.syfe.com", height=68, key="scope_in")
+        out_scope = st.text_area("✗ NO-FLY ZONE", "api.stark.com", height=68, key="scope_in")
 
-    if st.button("🔥 INITIATE KRYPTONIAN STRIKE", type="primary", use_container_width=True, key="strike_btn"):
-        st.write("Initiating...")
-        # (Subprocess trigger logic)
+    if st.button("💥 INITIATE HOUSE PARTY PROTOCOL", type="primary", use_container_width=True, key="strike_btn"):
+        st.info("ENGAGING ADVERSARY...")
 
-with tabs[3]: # TACTICAL SHELL
-    st.subheader("⚡ Manual Command Injection")
-    cmd = st.text_input("Enter Command (dig, whois, curl):", key="shell_in")
-    if st.button("RUN COMMAND", key="run_shell"):
-        proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        st.session_state.terminal_out = proc.stdout if proc.stdout else proc.stderr
+with tabs[3]: # TERMINAL
+    st.subheader("⚡ J.A.R.V.I.S. CORE COMMAND")
     st.code(st.session_state.terminal_out, language="bash")
