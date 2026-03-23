@@ -77,25 +77,28 @@ with tabs[0]: # MISSION CONTROL
         target_url = st.text_input("🔗 TARGET URL", "syfe.com")
    # --- 3. SIDEBAR CONTROLS ---
 with st.sidebar:
+    with st.sidebar:
     st.title("🦸‍♂️ S.V. 8.5 APEX")
-   if st.button("🚀 PRIME GOD-MODE TOOLS", use_container_width=True, key="sidebar_prime_btn"):
-    prime_armory()
+    
+    # Indented exactly 4 spaces
+    if st.button("🚀 PRIME GOD-MODE TOOLS", use_container_width=True, key="sidebar_prime_btn"):
+        prime_armory()
     
     st.divider()
     st.subheader("📡 PHASE TOGGLES")
     
-    # Indented 4 spaces to stay inside the 'with' block
-    st.session_state.p_recon = st.toggle("P1-2: Recon/Shadow", value=st.session_state.p_recon)
-    st.session_state.p_js = st.toggle("P3: Headless JS/Secrets", value=st.session_state.p_js)
-    st.session_state.p_strike = st.toggle("P4: Nuclei/Exposures", value=st.session_state.p_strike)
-    st.session_state.p_sto = st.toggle("💥 Auto-Takeover Exploit", value=st.session_state.p_sto)
-    st.session_state.p_ai = st.toggle("🧠 P7: AI Agent Probes", value=st.session_state.p_ai)
-    st.session_state.p_cloud = st.toggle("💎 P8: Web3 RPC/Bridge", value=st.session_state.p_cloud)
-    st.session_state.p_oob = st.toggle("🛰️ Blind OOB (Interactsh)", value=st.session_state.p_oob)
-    st.session_state.p_visual = st.toggle("P9: Visual Recon", value=st.session_state.p_visual)
+    # Indented exactly 4 spaces
+    st.session_state.p_recon = st.toggle("P1-2: Recon", value=True, key="t1")
+    st.session_state.p_js = st.toggle("P3: Headless JS", value=True, key="t2")
+    st.session_state.p_strike = st.toggle("P4: Nuclei", value=True, key="t3")
+    st.session_state.p_sto = st.toggle("💥 Auto-Takeover", value=True, key="t4")
+    st.session_state.p_ai = st.toggle("🧠 P7: AI Probes", value=True, key="t5")
+    st.session_state.p_cloud = st.toggle("💎 P8: Web3/RPC", value=True, key="t6")
+    st.session_state.p_oob = st.toggle("🛰️ Blind OOB", value=True, key="t7")
+    st.session_state.p_visual = st.toggle("P9: Visual Recon", value=True, key="t8")
     
     st.divider()
-    if st.button("🧹 PURGE WORKSPACE", use_container_width=True):
+    if st.button("🧹 PURGE WORKSPACE", use_container_width=True, key="sidebar_purge"):
         if os.path.exists(BIN_PATH):
             shutil.rmtree(BIN_PATH)
         st.session_state.logs = ">> SYSTEM WIPED."
