@@ -55,4 +55,13 @@ with st.sidebar:
     st.session_state.p_sto = st.toggle("💥 Auto-Takeover", value=st.session_state.p_sto, key="t4")
     st.session_state.p_ai = st.toggle("🧠 P7: AI Probes", value=st.session_state.p_ai, key="t5")
     st.session_state.p_cloud = st.toggle("💎 P8: Web3/RPC", value=st.session_state.p_cloud, key="t6")
-    st.session_state.p_oob = st.toggle("🛰️ Blind OOB", value=st.session_state.
+    # Corrected Toggle Block
+    st.session_state.p_oob = st.toggle("🛰️ Blind OOB", value=st.session_state.p_oob, key="t7")
+    st.session_state.p_visual = st.toggle("P9: Visual Recon", value=st.session_state.p_visual, key="t8")
+    
+    st.divider()
+    if st.button("🧹 PURGE WORKSPACE", use_container_width=True, key="side_purge"):
+        if os.path.exists(BIN_PATH):
+            shutil.rmtree(BIN_PATH)
+        st.session_state.logs = ">> SYSTEM WIPED."
+        st.rerun()
