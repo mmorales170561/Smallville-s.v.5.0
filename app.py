@@ -2,37 +2,62 @@ import streamlit as st
 import subprocess, os, requests, zipfile, io, shutil
 from datetime import datetime
 
-# --- 1. CONFIG ---
+# --- 1. CORE CONFIG & INITIALIZATION ---
 st.set_page_config(page_title="Smallville 8.5: Kryptonian Apex", layout="wide")
 BIN_PATH = os.path.expanduser("~/.smallville_bin")
 SCRIPT_PATH = os.path.join(os.getcwd(), "powers.sh")
 
-# --- 2. THE ELITE OOB & WEB3 RPC ENGINE ---
-def test_rpc_node(rpc_url):
-    """Tier-1 Web3: Checks if a public RPC endpoint allows unauthenticated state changes or data leaks."""
-    payload = {"jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 1}
-    try:
-        r = requests.post(rpc_url, json=payload, timeout=5)
-        if r.status_code == 200:
-            return f"✅ Valid RPC Node. Current Block: {int(r.json()['result'], 16)}"
-    except:
-        return "❌ Node Unresponsive or Protected."
+# Ensure session states exist so tabs don't crash
+if 'logs' not in st.session_state: st.session_state.logs = ">> APEX SYSTEM ONLINE."
+if 'findings' not in st.session_state: st.session_state.findings = []
+if 'terminal_out' not in st.session_state: st.session_state.terminal_out = ">> TACTICAL SHELL READY."
 
-# --- 3. UI TABS ---
-tabs = st.tabs(["🚀 Mission Control", "🛰️ OOB Tracking", "🔮 Web3 RPC Lab", "⚡ Tactical Shell", "📊 Evidence Lab"])
+# --- 2. SIDEBAR (The Control Hub) ---
+with st.sidebar:
+    st.header("🛠️ WEAPON SYSTEM")
+    if st.button("🚀 PRIME GOD-MODE TOOLS", use_container_width=True):
+        # Trigger your prime_armory function logic here
+        st.success("Tools Primed!")
+    
+    st.divider()
+    p_sto = st.toggle("💥 AUTO-EXPLOIT TAKEOVERS", True)
+    p_js = st.toggle("P3: HEADLESS KATANA (JS)", True)
+    p_strike = st.toggle("P4: NUCLEI (EXPOSURES)", True)
+    p_visual = st.toggle("P9: VISUAL RECON", True)
 
-with tabs[1]: # OOB TRACKER
-    st.subheader("🛰️ Out-of-Band Interaction (Blind SSRF)")
-    st.info("Inject this unique URL into your headers. If the target server calls it, you have a Blind SSRF!")
-    st.code("http://your-unique-id.interact.sh", language="markdown")
-    if st.button("Poll for OOB Interactions"):
-        st.success("No interactions detected yet. Listening...")
+# --- 3. THE MULTIVERSE TABS ---
+tabs = st.tabs(["🚀 Mission Control", "📊 Intelligence Desk", "🧪 Payload Lab", "⚡ Tactical Shell", "🖼️ Visual Recon"])
 
-with tabs[2]: # WEB3 RPC LAB
-    st.subheader("🔮 Web3 Public RPC Node Tester")
-    rpc_target = st.text_input("RPC Endpoint:", "https://eth-mainnet.g.alchemy.com/v2/your-key")
-    if st.button("Query Node Status"):
-        res = test_rpc_node(rpc_target)
-        st.write(res)
+with tabs[0]: # MISSION CONTROL
+    st.subheader("🚀 Strike Configuration")
+    target_url = st.text_input("🔗 TARGET URL(S)", "syfe.com")
+    h1_user = st.text_input("🆔 H1 HANDLE", placeholder="your_h1_handle")
+    
+    if st.button("🔥 INITIATE FULL SPECTRUM STRIKE", type="primary", use_container_width=True):
+        st.info(f"Firing at {target_url}...")
+        # (Subprocess execution logic goes here)
 
-# --- (Other tabs and logic from 8.0 remain integrated) ---
+with tabs[1]: # INTELLIGENCE DESK
+    st.subheader("🎯 High-Value Findings")
+    if st.session_state.findings:
+        for f in st.session_state.findings:
+            st.error(f)
+    else:
+        st.info("No critical findings in current session.")
+
+with tabs[2]: # PAYLOAD LAB
+    st.subheader("🧪 WAF-Bypass Generator")
+    vector = st.selectbox("Attack Vector:", ["XSS", "SQLi", "LFI"])
+    st.code("<svg/onload=alert`1`//" if vector == "XSS" else "' OR 1=1--", language="javascript")
+
+with tabs[3]: # TACTICAL SHELL
+    st.subheader("⚡ Manual Command Injection")
+    cmd = st.text_input("Enter Recon Command (dig, whois, curl):")
+    if st.button("RUN"):
+        # Dummy execution for UI check
+        st.session_state.terminal_out = f"Running: {cmd}..."
+    st.code(st.session_state.terminal_out, language="bash")
+
+with tabs[4]: # VISUAL RECON
+    st.subheader("🖼️ Site Screenshots")
+    st.info("Visual evidence will appear here after a successful scan.")
