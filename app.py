@@ -2,19 +2,20 @@ import streamlit as st
 import subprocess, os, requests, zipfile, io, shutil
 from datetime import datetime
 
-# --- 1. STARK HUD STYLING (The JARVIS Theme) ---
-st.set_page_config(page_title="JARVIS: Stark Intelligence", layout="wide")
+# --- 1. ERADICATOR THEME (Red & Black HUD) ---
+st.set_page_config(page_title="Smallville: Eradicator", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #0e1117; color: #00d4ff; }
-    [data-testid="stSidebar"] { background-color: #1a1c23; border-right: 2px solid #ffcc00; }
-    .stButton>button { background-color: #ffcc00; color: #000; border-radius: 5px; font-weight: bold; border: 1px solid #ffcc00; }
-    .stButton>button:hover { background-color: #00d4ff; color: #000; border: 1px solid #00d4ff; }
-    .stHeader { color: #ffcc00; font-family: 'Courier New', Courier, monospace; }
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
-    .stTabs [data-baseweb="tab"] { background-color: #1a1c23; border: 1px solid #333; color: #00d4ff; border-radius: 5px 5px 0 0; }
-    .stTabs [aria-selected="true"] { background-color: #ffcc00 !important; color: #000 !important; }
+    .stApp { background-color: #000000; color: #ffffff; }
+    [data-testid="stSidebar"] { background-color: #111111; border-right: 2px solid #ff0000; }
+    .stButton>button { background-color: #ff0000; color: #ffffff; border-radius: 2px; font-weight: bold; border: none; text-transform: uppercase; }
+    .stButton>button:hover { background-color: #cc0000; color: #ffffff; box-shadow: 0 0 10px #ff0000; }
+    .stHeader { color: #ff0000; font-family: 'Share Tech Mono', monospace; text-shadow: 2px 2px #330000; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] { background-color: #111111; border: 1px solid #ff0000; color: #ffffff; padding: 10px 20px; }
+    .stTabs [aria-selected="true"] { background-color: #ff0000 !important; color: #ffffff !important; font-weight: bold; }
+    code { color: #ff0000 !important; background-color: #111111 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -22,50 +23,51 @@ st.markdown("""
 BIN_PATH = os.path.expanduser("~/.smallville_bin")
 SCRIPT_PATH = os.path.join(os.getcwd(), "powers.sh")
 
+# Force-initialize all keys to prevent tab-loss
 for key in ["logs", "findings", "terminal_out", "p_recon", "p_js", "p_strike", "p_sto", "p_ai", "p_cloud", "p_oob", "p_visual"]:
     if key not in st.session_state:
         if key.startswith("p_"): st.session_state[key] = True
         elif key == "findings": st.session_state[key] = []
-        else: st.session_state[key] = ">> JARVIS ONLINE. STANDING BY."
+        else: st.session_state[key] = ">> KRYPTONIAN SYSTEM ONLINE."
 
-# --- 3. SIDEBAR: STARK SYSTEMS ---
+# --- 3. SIDEBAR: HOUSE OF EL ---
 with st.sidebar:
-    st.header("⚡ STARK SYSTEMS")
-    st.image("https://upload.wikimedia.org/wikipedia/commons/a/a3/Stark_Industries_logo.png", width=200)
+    st.header("🛡️ HOUSE OF EL")
+    st.subheader("Bakersfield Tactical Node")
     
-    if st.button("🚀 ARMOR UP (Install Tools)", use_container_width=True, key="side_prime"):
-        # prime_armory() logic here
-        st.success("MARK-LXXXV SYSTEMS ARMED.")
-    
-    st.divider()
-    st.subheader("🛠️ HUD OVERLAY")
-    st.session_state.p_recon = st.toggle("🛰️ SATELLITE RECON (P1-2)", value=st.session_state.p_recon, key="t1")
-    st.session_state.p_js = st.toggle("🕵️‍♂️ ANALYSIS (P3/JS)", value=st.session_state.p_js, key="t2")
-    st.session_state.p_strike = st.toggle("🔥 REPULSOR BLAST (P4)", value=st.session_state.p_strike, key="t3")
-    st.session_state.p_ai = st.toggle("🧠 NEURAL PROBE (AI)", value=st.session_state.p_ai, key="t5")
-    st.session_state.p_cloud = st.toggle("💎 ARC REACTOR (Web3)", value=st.session_state.p_cloud, key="t6")
-    st.session_state.p_oob = st.toggle("📡 BLIND SENSORS (OOB)", value=st.session_state.p_oob, key="t7")
+    if st.button("🚀 PRIME KRYPTONIAN ARMORY", use_container_width=True, key="side_prime"):
+        # (prime_armory function call here)
+        st.success("SOLAR CELLS CHARGED. BINARIES SYNCED.")
     
     st.divider()
-    if st.button("🧹 SELF-DESTRUCT (Purge)", use_container_width=True, key="side_purge"):
+    st.subheader("🧬 ABILITY TOGGLES")
+    st.session_state.p_recon = st.toggle("🛰️ X-RAY VISION (Recon)", value=st.session_state.p_recon, key="t1")
+    st.session_state.p_js = st.toggle("🧠 SUPER-HEARING (JS/Secrets)", value=st.session_state.p_js, key="t2")
+    st.session_state.p_strike = st.toggle("🔥 HEAT VISION (Nuclei)", value=st.session_state.p_strike, key="t3")
+    st.session_state.p_ai = st.toggle("🤖 PHANTOM ZONE (AI Probes)", value=st.session_state.p_ai, key="t5")
+    st.session_state.p_cloud = st.toggle("💎 KRYPTONITE (Web3/RPC)", value=st.session_state.p_cloud, key="t6")
+    st.session_state.p_oob = st.toggle("📡 TELEPATHY (Blind OOB)", value=st.session_state.p_oob, key="t7")
+    
+    st.divider()
+    if st.button("🧹 PURGE FORTRESS", use_container_width=True, key="side_purge"):
         if os.path.exists(BIN_PATH): shutil.rmtree(BIN_PATH)
         st.rerun()
 
-# --- 4. HUD TABS (The Workspace) ---
-tabs = st.tabs(["🚀 STRIKE OPS", "📊 INTEL ANALYSIS", "🧪 ADVERSARIAL LAB", "⚡ J.A.R.V.I.S. TERMINAL", "🖼️ VISUAL HUD"])
+# --- 4. THE MULTIVERSE TABS ---
+tabs = st.tabs(["🚀 STRIKE OPS", "📊 INTELLIGENCE", "🧪 PAYLOAD LAB", "⚡ TACTICAL SHELL", "🖼️ VISUAL RECON"])
 
 with tabs[0]: # STRIKE OPS
-    st.subheader("🎯 MISSION CONFIGURATION")
+    st.subheader("🎯 MISSION PARAMETERS")
     col1, col2 = st.columns(2)
     with col1:
-        target_url = st.text_input("🔗 TARGET VECTOR", "stark.com", key="target_in")
-        h1_user = st.text_input("🆔 OPERATOR ID", placeholder="Stark-001", key="h1_in")
+        target_url = st.text_input("🔗 TARGET SECTOR", "syfe.com", key="target_in")
+        h1_user = st.text_input("🆔 OPERATOR CODE", placeholder="Krypton-01", key="h1_in")
     with col2:
-        out_scope = st.text_area("✗ NO-FLY ZONE", "api.stark.com", height=68, key="scope_in")
+        out_scope = st.text_area("✗ NO-GO ZONE", "api.syfe.com", height=68, key="scope_in")
 
-    if st.button("💥 INITIATE HOUSE PARTY PROTOCOL", type="primary", use_container_width=True, key="strike_btn"):
-        st.info("ENGAGING ADVERSARY...")
+    if st.button("🔥 INITIATE FULL SPECTRUM STRIKE", type="primary", use_container_width=True, key="strike_btn"):
+        st.info("BREACHING TARGET DEFENSES...")
 
-with tabs[3]: # TERMINAL
-    st.subheader("⚡ J.A.R.V.I.S. CORE COMMAND")
+with tabs[3]: # TACTICAL SHELL
+    st.subheader("⚡ DIRECT INTERFACE")
     st.code(st.session_state.terminal_out, language="bash")
