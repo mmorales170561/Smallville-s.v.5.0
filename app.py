@@ -67,6 +67,13 @@ with tabs[0]: # MISSION CONTROL
         target_url = st.text_input("🔗 TARGET URL", "syfe.com")
         h1_user = st.text_input("🆔 H1 HANDLE", placeholder="your_h1_handle")
     with col2:
-        out_scope = st.text_area("✗ OUT-SCOPE", "api.syfe.com", height=68)
+    st.divider()
+    st.subheader("📡 PHASE TOGGLES")
+    
+    # Corrected Toggle Logic
+    if "p_recon" not in st.session_state:
+        st.session_state.p_recon = True
 
-    if st
+    st.session_state.p_recon = st.toggle("P1-2: Recon/Shadow", value=st.session_state.p_recon)
+    st.session_state.p_js = st.toggle("P3: Headless JS/Secrets", value=st.session_state.p_js)
+    st.session_state.p_strike = st.toggle("P4: Nuclei/Exposures", value=st.session_state.p_strike)
