@@ -53,21 +53,59 @@ with st.sidebar:
         if os.path.exists(BIN_PATH): shutil.rmtree(BIN_PATH)
         st.rerun()
 
-# --- 4. THE MULTIVERSE TABS ---
+# --- 4. THE MULTIVERSE TABS (CORE WORKSPACE) ---
 tabs = st.tabs(["🚀 STRIKE OPS", "📊 INTELLIGENCE", "🧪 PAYLOAD LAB", "⚡ TACTICAL SHELL", "🖼️ VISUAL RECON"])
 
-with tabs[0]: # STRIKE OPS
-    st.subheader("🎯 MISSION PARAMETERS")
-    col1, col2 = st.columns(2)
-    with col1:
-        target_url = st.text_input("🔗 TARGET SECTOR", "syfe.com", key="target_in")
-        h1_user = st.text_input("🆔 OPERATOR CODE", placeholder="Krypton-01", key="h1_in")
-    with col2:
-        out_scope = st.text_area("✗ NO-GO ZONE", "api.syfe.com", height=68, key="scope_in")
+with tabs[0]: # MISSION CONTROL: MULTI-VECTOR
+    st.header("🎯 MISSION PARAMETERS")
+    
+    # Global Identifiers
+    col_id1, col_id2 = st.columns(2)
+    with col_id1:
+        h1_user = st.text_input("🆔 OPERATOR CODE", value="Krypton-01", key="h1_in")
+    with col_id2:
+        out_scope = st.text_area("✗ NO-GO ZONE", "api.target.com, dev-internal.net", height=68, key="scope_in")
 
-    if st.button("🔥 INITIATE FULL SPECTRUM STRIKE", type="primary", use_container_width=True, key="strike_btn"):
-        st.info("BREACHING TARGET DEFENSES...")
+    st.divider()
+
+    # Domain-Specific Sections
+    v_tabs = st.tabs(["🌐 WEB2 (Standard)", "💎 WEB3 (Blockchain)", "🤖 AI AGENTS (LLM)"])
+
+    with v_tabs[0]: # WEB2 SECTION
+        st.subheader("🔗 WEB2 TARGET SECTOR")
+        web2_target = st.text_input("Main Domain / CIDR:", "example.com", key="w2_in")
+        if st.button("🔥 INITIATE WEB2 STRIKE", type="primary", key="w2_btn"):
+            st.info(f"X-Ray Vision engaged on {web2_target}...")
+
+    with v_tabs[1]: # WEB3 SECTION
+        st.subheader("⛓️ WEB3 TARGET SECTOR")
+        col_w3a, col_w3b = st.columns(2)
+        with col_w3a:
+            w3_domain = st.text_input("Frontend URL:", "app.protocol.io", key="w3_dom")
+        with col_w3b:
+            w3_contract = st.text_input("Contract / RPC:", "0x... or https://rpc-url", key="w3_rpc")
+        if st.button("🔥 INITIATE KRYPTONITE STRIKE", type="primary", key="w3_btn"):
+            st.info(f"Probing Web3 Finality & RPC Nodes at {w3_domain}...")
+
+    with v_tabs[2]: # AI SECTION
+        st.subheader("🧠 AI AGENT TARGET SECTOR")
+        ai_endpoint = st.text_input("Agent API Endpoint:", "https://api.ai-service.com/v1/chat", key="ai_in")
+        ai_model = st.selectbox("Model Type:", ["REST-API", "Web-Chatbot", "Custom Agent"], key="ai_type")
+        if st.button("🔥 INITIATE PHANTOM ZONE PROBE", type="primary", key="ai_btn"):
+            st.info(f"Neural Probe launched against {ai_endpoint}...")
+
+with tabs[1]: # INTELLIGENCE
+    st.subheader("📊 SECTOR INTELLIGENCE")
+    if st.session_state.findings:
+        for f in st.session_state.findings:
+            st.error(f)
+    else:
+        st.info("No critical vulnerabilities detected in current sector.")
 
 with tabs[3]: # TACTICAL SHELL
-    st.subheader("⚡ DIRECT INTERFACE")
+    st.subheader("⚡ DIRECT INTERFACE (J.A.R.V.I.S. CORE)")
+    cmd = st.text_input("Enter Command:", key="shell_in")
+    if st.button("EXECUTE", key="run_shell"):
+        # Terminal execution logic
+        st.session_state.terminal_out = f"Executing {cmd}..."
     st.code(st.session_state.terminal_out, language="bash")
