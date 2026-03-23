@@ -65,15 +65,28 @@ with tabs[0]: # MISSION CONTROL
     col1, col2 = st.columns(2)
     with col1:
         target_url = st.text_input("🔗 TARGET URL", "syfe.com")
-        h1_user = st.text_input("🆔 H1 HANDLE", placeholder="your_h1_handle")
-    with col2:
+   # --- 3. SIDEBAR CONTROLS ---
+with st.sidebar:
+    st.title("🦸‍♂️ S.V. 8.5 APEX")
+    if st.button("🚀 PRIME GOD-MODE TOOLS", use_container_width=True):
+        prime_armory()
+    
     st.divider()
     st.subheader("📡 PHASE TOGGLES")
     
-    # Corrected Toggle Logic
-    if "p_recon" not in st.session_state:
-        st.session_state.p_recon = True
-
+    # Indented 4 spaces to stay inside the 'with' block
     st.session_state.p_recon = st.toggle("P1-2: Recon/Shadow", value=st.session_state.p_recon)
     st.session_state.p_js = st.toggle("P3: Headless JS/Secrets", value=st.session_state.p_js)
     st.session_state.p_strike = st.toggle("P4: Nuclei/Exposures", value=st.session_state.p_strike)
+    st.session_state.p_sto = st.toggle("💥 Auto-Takeover Exploit", value=st.session_state.p_sto)
+    st.session_state.p_ai = st.toggle("🧠 P7: AI Agent Probes", value=st.session_state.p_ai)
+    st.session_state.p_cloud = st.toggle("💎 P8: Web3 RPC/Bridge", value=st.session_state.p_cloud)
+    st.session_state.p_oob = st.toggle("🛰️ Blind OOB (Interactsh)", value=st.session_state.p_oob)
+    st.session_state.p_visual = st.toggle("P9: Visual Recon", value=st.session_state.p_visual)
+    
+    st.divider()
+    if st.button("🧹 PURGE WORKSPACE", use_container_width=True):
+        if os.path.exists(BIN_PATH):
+            shutil.rmtree(BIN_PATH)
+        st.session_state.logs = ">> SYSTEM WIPED."
+        st.rerun()
