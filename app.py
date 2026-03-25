@@ -6,9 +6,10 @@ import tarfile
 import zipfile
 import shutil
 import time
+import platform
 
 # --- 1. HUD CONFIG ---
-st.set_page_config(page_title="RUBY-OPERATOR v6.1", layout="wide")
+st.set_page_config(page_title="RUBY-OPERATOR v6.2", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #ff3131; font-family: 'Courier New', monospace; }
@@ -23,13 +24,17 @@ BIN_DIR = "/tmp/ruby_bin"
 if not os.path.exists(BIN_DIR): os.makedirs(BIN_DIR)
 
 # --- 2. GLOBAL STATE ---
-if 'target' not in st.session_state: st.session_state.target = "example.com"
-if 'last_log' not in st.session_state: st.session_state.last_log = "SYSTEM RECONSTRUCTED. V6.1 ONLINE."
-if 'in_scope' not in st.session_state: st.session_state.in_scope = "example.com"
-if 'out_scope' not in st.session_state: st.session_state.out_scope = ".gov, .mil"
-if 'battery_type' not in st.session_state: st.session_state.battery_type = "Web2"
+DEFAULTS = {
+    'target': "example.com",
+    'last_log': f"SYSTEM ONLINE | PY {platform.python_version()}",
+    'in_scope': "example.com",
+    'out_scope': ".gov, .mil",
+    'battery_type': "Web2"
+}
+for k, v in DEFAULTS.items():
+    if k not in st.session_state: st.session_state[k] = v
 
-# --- 3. REGISTRY ---
+# --- 3. UPDATED REGISTRY ---
 ARSENAL = {
     "Web2": ["subfinder", "httpx", "ffuf", "katana"],
     "Web3": ["aderyn", "arjun"],
@@ -50,9 +55,12 @@ TOOL_URLS = {
 
 # --- 4. CORE ENGINES ---
 def find_exe(name):
+    """Recursive search for binary or entry script."""
     for root, _, files in os.walk(BIN_DIR):
-        for target in [name, f"{name}.py"]:
+        for target in [name, f"{name}.py", "main.py"]:
             if target in files:
+                # Specialized logic for Arjun/Sqlmap folders
+                if target == "main.py" and name not in root.lower(): continue
                 p = os.path.join(root, target)
                 os.chmod(p, 0o755)
                 return p
@@ -61,27 +69,20 @@ def find_exe(name):
 def fabricate_core(tool_name):
     if tool_name not in TOOL_URLS: return False
     try:
-        r = requests.get(TOOL_URLS[tool_name], stream=True, timeout=20)
+        r = requests.get(TOOL_URLS[tool_name], stream=True, timeout=25)
+        r.raise_for_status()
         pkg_path = f"/tmp/{tool_name}_pkg"
         with open(pkg_path, 'wb') as f: f.write(r.content)
+        
         if zipfile.is_zipfile(pkg_path):
             with zipfile.ZipFile(pkg_path, 'r') as z: z.extractall(BIN_DIR)
         else:
             with tarfile.open(pkg_path, "r:*") as t: t.extractall(path=BIN_DIR)
         os.remove(pkg_path)
         return True
-    except: return False
-
-def check_scope(target):
-    target = target.lower().strip()
-    if not target: return False, "🎯 Awaiting Sector..."
-    out_list = [x.strip().lower() for x in st.session_state.out_scope.split(",") if x.strip()]
-    in_list = [x.strip().lower() for x in st.session_state.in_scope.split(",") if x.strip()]
-    for forbidden in out_list:
-        if forbidden in target: return False, f"🛑 RED ZONE: {forbidden}"
-    for allowed in in_list:
-        if allowed in target: return True, "✅ AUTHORIZED"
-    return False, "⚠️ OUT OF SCOPE"
+    except Exception as e:
+        st.session_state.last_log += f"\n[!] Error {tool_name}: {str(e)}"
+        return False
 
 # --- 5. SIDEBAR ---
 with st.sidebar:
@@ -97,7 +98,7 @@ with st.sidebar:
             for t in ARSENAL[st.session_state.battery_type]:
                 s.write(f"🧬 Fabricating {t.upper()}...")
                 fabricate_core(t)
-            s.update(label="Matrix Ready.", state="complete")
+            s.update(label="Matrix Synchronized.", state="complete")
         st.rerun()
 
     if st.button("💀 BURN WORKSPACE"):
@@ -106,36 +107,41 @@ with st.sidebar:
         st.rerun()
 
 # --- 6. MAIN HUD ---
-st.title("🏹 SMALLVILLE S.V. 6.1")
-auth, msg = check_scope(st.session_state.target)
-t1, t2, t3 = st.tabs(["🚀 STRIKE", "📊 MATRIX", "📟 HUD"])
+st.title("🏹 SMALLVILLE S.V. 6.2")
+auth = any(allowed.strip().lower() in st.session_state.target.lower() for allowed in st.session_state.in_scope.split(",") if allowed.strip())
+forbidden = any(red.strip().lower() in st.session_state.target.lower() for red in st.session_state.out_scope.split(",") if red.strip())
+
+t1, t2, t3, t4 = st.tabs(["🚀 STRIKE", "📊 MATRIX", "📟 HUD", "🔍 DEBUG"])
 
 with t1:
     st.session_state.target = st.text_input("🎯 TARGET SECTOR", st.session_state.target)
-    if auth:
-        st.success(f"{msg} | Interlock Released.")
-        selected = []
-        st.write("---")
+    if forbidden: st.error("🛑 TARGET IN RED ZONE")
+    elif auth:
+        st.success("✅ AUTHORIZED")
         cols = st.columns(2)
         for i, tool in enumerate(ARSENAL[st.session_state.battery_type]):
             ready = find_exe(tool) is not None
             with cols[i % 2]:
-                if st.checkbox(f"{tool.upper()}", value=ready, key=f"strike_{tool}"):
-                    selected.append(tool)
-        
+                st.checkbox(f"{tool.upper()}", value=ready, key=f"strike_{tool}")
         if st.button("🔥 EXECUTE STRIKE"):
-            st.session_state.last_log = f"🚀 STRIKE INITIATED ON {st.session_state.target} WITH {len(selected)} TOOLS."
-    else:
-        st.error(msg)
+            st.session_state.last_log = f"Strike initiated on {st.session_state.target}."
+    else: st.warning("⚠️ OUT OF SCOPE")
 
 with t2:
-    cols = st.columns(3)
-    for i, (cat, tools) in enumerate(ARSENAL.items()):
-        with cols[i]:
-            st.subheader(cat)
-            for t in tools:
-                ready = find_exe(t) is not None
-                st.markdown(f"<span style='color:{'#00ff00' if ready else '#555'}'>{'✅' if ready else '❌'} {t.upper()}</span>", unsafe_allow_html=True)
+    for cat, tools in ARSENAL.items():
+        st.subheader(cat)
+        for t in tools:
+            ready = find_exe(t) is not None
+            st.markdown(f"<span style='color:{'#00ff00' if ready else '#555'}'>{'✅' if ready else '❌'} {t.upper()}</span>", unsafe_allow_html=True)
 
 with t3:
     st.markdown(f'<div class="terminal">{st.session_state.last_log}</div>', unsafe_allow_html=True)
+
+with t4:
+    st.subheader("📁 SYSTEM FILE TREE")
+    if st.button("🔎 SCAN /tmp/ruby_bin"):
+        files = []
+        for root, _, filenames in os.walk(BIN_DIR):
+            for f in filenames:
+                files.append(os.path.join(root, f))
+        st.code("\n".join(files) if files else "Directory Empty.")
