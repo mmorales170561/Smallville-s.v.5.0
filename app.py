@@ -26,25 +26,43 @@ if not os.path.exists(BIN_DIR):
     os.makedirs(BIN_DIR)
 
 def fabricate_tool(tool_name, url, is_zip=False):
-    """Downloads and extracts binaries to bypass pip/apt issues."""
+    """Downloads and extracts binaries with safety checks."""
     path = f"{BIN_DIR}/{tool_name}"
     if not os.path.exists(path):
-        with st.spinner(f"🧬 Fabricating {tool_name}..."):
-            r = requests.get(url, stream=True)
-            local_file = f"/tmp/{tool_name}_package"
-            with open(local_file, 'wb') as f:
-                f.write(r.content)
-            
-            if is_zip:
-                with zipfile.ZipFile(local_file, 'r') as zip_ref:
-                    zip_ref.extractall(BIN_DIR)
-            else:
-                with tarfile.open(local_file, "r:gz") as tar:
-                    tar.extractall(path=BIN_DIR)
-            
-            # Make binary executable
-            os.chmod(path, 0o755) if os.path.exists(path) else None
-            st.success(f"🔋 {tool_name} Online.")
+        try:
+            with st.spinner(f"🧬 Fabricating {tool_name}..."):
+                r = requests.get(url, stream=True, timeout=15)
+                
+                # SAFETY CHECK: If the server says "No" or "Not Found"
+                if r.status_code != 200:
+                    st.error(f"❌ Fabrication Failed: Server returned status {r.status_code}")
+                    return
+
+                local_file = f"/tmp/{tool_name}_package"
+                with open(local_file, 'wb') as f:
+                    f.write(r.content)
+                
+                # Check if we actually got a file and not an HTML error page
+                if os.path.getsize(local_file) < 1000:
+                    st.error(f"❌ Fabrication Failed: {tool_name} package is empty or invalid.")
+                    return
+
+                if is_zip:
+                    with zipfile.ZipFile(local_file, 'r') as zip_ref:
+                        zip_ref.extractall(BIN_DIR)
+                else:
+                    # Added 'errorlevel=1' to catch extraction issues early
+                    with tarfile.open(local_file, "r:gz") as tar:
+                        tar.extractall(path=BIN_DIR)
+                
+                # Recursive chmod to find the binary inside extracted folders
+                for root, dirs, files in os.walk(BIN_DIR):
+                    for f in files:
+                        os.chmod(os.path.join(root, f), 0o755)
+                
+                st.success(f"🔋 {tool_name} Online.")
+        except Exception as e:
+            st.error(f"⚠️ Fabrication Error: {str(e)}")
 
 # --- 3. SIDEBAR: OPERATOR CONSOLE ---
 with st.sidebar:
