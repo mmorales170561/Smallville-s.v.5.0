@@ -5,28 +5,30 @@ import requests
 import tarfile
 import zipfile
 import shutil
-from datetime import datetime
 
 # --- 1. HUD CONFIGURATION ---
-st.set_page_config(page_title="RUBY-OPERATOR v2.6", layout="wide")
+st.set_page_config(page_title="RUBY-OPERATOR v2.7", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #000; color: #ff3131; font-family: 'Courier New', monospace; }
     [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 2px solid #ff3131; }
     .stButton>button { background-color: #ff3131; color: #000; border: none; font-weight: bold; border-radius: 0px; }
     .stTextInput>div>div>input { background-color: #111; color: #ff3131; border: 1px solid #444; }
-    .terminal { background-color: #050505; color: #00ff00; padding: 15px; border: 1px solid #333; font-family: monospace; height: 300px; overflow-y: scroll; white-space: pre-wrap; font-size: 12px; }
+    .terminal { background-color: #050505; color: #00ff00; padding: 15px; border: 1px solid #333; font-family: monospace; height: 350px; overflow-y: scroll; white-space: pre-wrap; font-size: 12px; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 2. THE VOLATILE ARMORY ---
 BIN_DIR = "/tmp/ruby_bin"
-if not os.path.exists(BIN_DIR):
-    os.makedirs(BIN_DIR)
+if not os.path.exists(BIN_DIR): os.makedirs(BIN_DIR)
 
-# Initialize Session States
-if 'last_log' not in st.session_state: st.session_state.last_log = "SYSTEM IDLE..."
+if 'last_log' not in st.session_state: st.session_state.last_log = "SYSTEM STANDBY..."
 if 'target' not in st.session_state: st.session_state.target = "example.com"
+
+def get_bin(name):
+    for r, _, f in os.walk(BIN_DIR):
+        if name in f: return os.path.join(r, name)
+    return None
 
 def fabricate_tool(tool_name, url, is_zip=False):
     try:
@@ -39,6 +41,7 @@ def fabricate_tool(tool_name, url, is_zip=False):
                 with zipfile.ZipFile(pkg, 'r') as z: z.extractall(BIN_DIR)
             else:
                 with tarfile.open(pkg, "r:gz") as t: t.extractall(path=BIN_DIR)
+            # Find and set perms
             for root, _, files in os.walk(BIN_DIR):
                 for f in files:
                     if f == tool_name or (f.startswith(tool_name) and "." not in f):
@@ -49,11 +52,25 @@ def fabricate_tool(tool_name, url, is_zip=False):
 # --- 3. SIDEBAR: OPERATOR CONSOLE ---
 with st.sidebar:
     st.title("🔴 RUBY-OPERATOR")
-    battery = st.selectbox("TACTICAL BATTERY", ["Ghost (Recon)", "DeFi (Web3)"])
+    # RESTORED BATTERY ARRAY
+    battery = st.selectbox("TACTICAL BATTERY", [
+        "Ghost (Recon)", 
+        "Strike (Nuclei/Exploit)", 
+        "Katana (JS Mining)", 
+        "DeFi (Web3)"
+    ])
+    
     if st.button("🔌 PRIME ARMORY"):
         if battery == "Ghost (Recon)":
             fabricate_tool("subfinder", "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip", is_zip=True)
             fabricate_tool("httpx", "https://github.com/projectdiscovery/httpx/releases/download/v1.6.0/httpx_1.6.0_linux_amd64.zip", is_zip=True)
+        elif battery == "Strike (Nuclei/Exploit)":
+            fabricate_tool("nuclei", "https://github.com/projectdiscovery/nuclei/releases/download/v3.2.3/nuclei_3.2.3_linux_amd64.zip", is_zip=True)
+        elif battery == "Katana (JS Mining)":
+            fabricate_tool("katana", "https://github.com/projectdiscovery/katana/releases/download/v1.1.0/katana_1.1.0_linux_amd64.zip", is_zip=True)
+        elif battery == "DeFi (Web3)":
+            fabricate_tool("aderyn", "https://github.com/Cyfrin/aderyn/releases/latest/download/aderyn-x86_64-unknown-linux-gnu.tar.gz")
+
     st.divider()
     if st.button("💀 BURN INSTANCE"):
         shutil.rmtree(BIN_DIR, ignore_errors=True)
@@ -64,50 +81,36 @@ tabs = st.tabs(["🚀 STRIKE OPS", "📊 INTELLIGENCE", "🧪 PAYLOAD LAB"])
 
 with tabs[0]: # STRIKE OPS
     st.header("🔫 RED KRYPTONITE GUN")
-    # Store target in session state to prevent 't_url' not defined errors
     st.session_state.target = st.text_input("🎯 TARGET SECTOR", st.session_state.target)
     
-    col1, col2 = st.columns(2)
-    def get_bin(name):
-        for r, _, f in os.walk(BIN_DIR):
-            if name in f: return os.path.join(r, name)
-        return None
-
-    with col1:
-        if st.button("🔥 FIRE: SUBFINDER"):
+    c1, c2, c3 = st.columns(3)
+    
+    with c1:
+        if st.button("🔥 GHOST: SUBFINDER"):
             cmd = get_bin("subfinder")
             if cmd:
-                with st.spinner("Recon..."):
-                    res = subprocess.run([cmd, "-d", st.session_state.target, "-silent"], capture_output=True, text=True)
-                    st.session_state.last_log = res.stdout if res.stdout else "No subdomains found."
-            else: st.error("Prime Armory First.")
+                res = subprocess.run([cmd, "-d", st.session_state.target, "-silent"], capture_output=True, text=True)
+                st.session_state.last_log = res.stdout
+            else: st.error("Prime Ghost First.")
 
-    with col2:
-        if st.button("🔥 FIRE: HTTPX PROBE"):
-            cmd = get_bin("httpx")
+    with c2:
+        if st.button("🔥 STRIKE: NUCLEI"):
+            cmd = get_bin("nuclei")
             if cmd:
-                with st.spinner("Probing..."):
-                    res = subprocess.run(f"echo {st.session_state.target} | {cmd} -silent -sc -td", shell=True, capture_output=True, text=True)
-                    st.session_state.last_log = res.stdout if res.stdout else "No HTTP response."
-            else: st.error("Prime Armory First.")
+                # Running a low-noise scan to keep the Streamlit process stable
+                res = subprocess.run([cmd, "-u", st.session_state.target, "-silent", "-severity", "critical,high"], capture_output=True, text=True)
+                st.session_state.last_log = res.stdout if res.stdout else "No Critical Vulns Found."
+            else: st.error("Prime Strike First.")
+
+    with c3:
+        if st.button("🔥 KATANA: JS MINE"):
+            cmd = get_bin("katana")
+            if cmd:
+                res = subprocess.run([cmd, "-u", st.session_state.target, "-jc", "-silent"], capture_output=True, text=True)
+                st.session_state.last_log = res.stdout
+            else: st.error("Prime Katana First.")
 
 # --- 5. LIVE HUD ---
 st.divider()
 st.subheader("📟 LIVE TERMINAL")
 st.markdown(f'<div class="terminal">{st.session_state.last_log}</div>', unsafe_allow_html=True)
-
-with tabs[2]: # PAYLOAD LAB
-    st.header("🧪 FUZZING PROFILES")
-    st.info("Generating Directory Fuzz List...")
-    fuzz_list = [".env", ".git/config", "api/v1/user", "admin/login", "wp-config.php", "config.json"]
-    st.code("\n".join(fuzz_list), language="bash")
-    
-    if st.button("💉 INJECT FUZZ LIST"):
-        cmd = get_bin("httpx")
-        if cmd:
-            with st.spinner("Fuzzing..."):
-                # Simulating a multi-path probe
-                paths = ",".join(fuzz_list)
-                res = subprocess.run(f"echo {st.session_state.target} | {cmd} -path {paths} -sc", shell=True, capture_output=True, text=True)
-                st.session_state.last_log = res.stdout
-        else: st.error("Prime Armory First.")
