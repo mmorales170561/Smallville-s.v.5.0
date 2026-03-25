@@ -2,12 +2,12 @@ import streamlit as st
 import subprocess
 import os
 import requests
-import tarfile
 import zipfile
+import tarfile
 import shutil
 
 # --- 1. HUD CONFIG ---
-st.set_page_config(page_title="RUBY-OPERATOR v6.8", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="RUBY-OPERATOR v6.9", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #ff3131; font-family: 'Courier New', monospace; }
@@ -21,92 +21,57 @@ st.markdown("""
 BIN_DIR = "/tmp/ruby_bin"
 if not os.path.exists(BIN_DIR): os.makedirs(BIN_DIR)
 
-# --- 2. INITIALIZE THE VAULT (Session State) ---
-# This block ensures data persists between clicks
-state_defaults = {
-    'battery_type': 'Web2',
-    'in_scope': 'example.com',
-    'out_scope': '.gov, .mil',
-    'last_log': 'SYSTEM ONLINE.',
-    'target': 'example.com'
-}
-for key, val in state_defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = val
+# --- 2. THE VAULT (PERSISTENCE) ---
+if 'last_log' not in st.session_state: st.session_state.last_log = "SYSTEM ONLINE."
+if 'in_scope' not in st.session_state: st.session_state.in_scope = "example.com"
+if 'out_scope' not in st.session_state: st.session_state.out_scope = ".gov, .mil"
 
-# --- 3. SIDEBAR (The Command Center) ---
+# --- 3. THE ARMORY (TOOLS) ---
+TOOL_URLS = {
+    "subfinder": "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip",
+    "httpx": "https://github.com/projectdiscovery/httpx/releases/download/v1.6.0/httpx_1.6.0_linux_amd64.zip",
+    "nuclei": "https://github.com/projectdiscovery/nuclei/releases/download/v3.2.9/nuclei_3.2.9_linux_amd64.zip",
+    "katana": "https://github.com/projectdiscovery/katana/releases/download/v1.1.0/katana_1.1.0_linux_amd64.zip"
+}
+
+def log_event(msg):
+    st.session_state.last_log += f"\n[>] {msg}"
+
+def prime_armory():
+    for name, url in TOOL_URLS.items():
+        log_event(f"Downloading {name}...")
+        try:
+            r = requests.get(url, timeout=15)
+            pkg = f"/tmp/{name}.zip"
+            with open(pkg, "wb") as f: f.write(r.content)
+            with zipfile.ZipFile(pkg, 'r') as z: z.extractall(BIN_DIR)
+            os.remove(pkg)
+            log_event(f"SUCCESS: {name} installed to {BIN_DIR}")
+        except Exception as e:
+            log_event(f"ERROR: {name} failed -> {str(e)}")
+
+# --- 4. SIDEBAR ---
 with st.sidebar:
     st.title("🔴 COMMAND")
-    
-    # Use 'key' to link widgets directly to session_state
-    st.radio("ENVIRONMENT", ["Web2", "Web3", "AI Agent"], key='battery_type')
-    
+    st.radio("ENVIRONMENT", ["Web2", "Web3", "AI Agent"], key='env')
     st.divider()
     st.subheader("🛡️ ROE PROTECTION")
-    st.text_area("🟢 GREEN ZONE", key='in_scope', help="Allowed domains (comma separated)")
-    st.text_area("🔴 RED ZONE", key='out_scope', help="Forbidden patterns")
-
+    st.text_area("🟢 GREEN ZONE", key='in_scope')
+    st.text_area("🔴 RED ZONE", key='out_scope')
+    
     if st.button("🔌 PRIME ARSENAL"):
-        st.session_state.last_log = "CORE INJECTION INITIATED..."
-        # Logic for tool fabrication...
+        prime_armory()
         st.rerun()
-        
-    if st.button("💀 BURN WORKSPACE"):
-        shutil.rmtree(BIN_DIR, ignore_errors=True)
-        os.makedirs(BIN_DIR)
-        st.rerun()
-
-# --- 4. TOOL REGISTRY ---
-ARSENAL = {
-    "Web2": ["subfinder", "httpx", "ffuf", "katana"],
-    "Web3": ["aderyn", "arjun"],
-    "AI Agent": ["trufflehog", "sqlmap", "commix"]
-}
-
-def find_exe(name):
-    for root, _, files in os.walk(BIN_DIR):
-        for f in files:
-            if f == name or f == f"{name}.py" or (name == "sqlmap" and f == "sqlmap.py"):
-                p = os.path.join(root, f)
-                os.chmod(p, 0o755)
-                return p
-    return shutil.which(name)
 
 # --- 5. MAIN HUD ---
-st.title("🏹 SMALLVILLE S.V. 6.8")
-t1, t2, t3, t4 = st.tabs(["🚀 STRIKE", "📊 MATRIX", "📟 HUD", "🛠️ TERMINAL"])
-
-# Check authorization
-auth = any(g.strip().lower() in st.session_state.target.lower() for g in st.session_state.in_scope.split(",") if g.strip())
-forbidden = any(r.strip().lower() in st.session_state.target.lower() for r in st.session_state.out_scope.split(",") if r.strip())
-
-with t1:
-    st.text_input("🎯 TARGET SECTOR", key='target')
-    if forbidden: 
-        st.error("🛑 INTERLOCK ENGAGED: TARGET IS IN RED ZONE")
-    elif auth:
-        st.success("✅ AUTHORIZED STRIKE ZONE")
-        if st.button("🔥 FIRE"):
-            st.session_state.last_log = f"Executing strike on {st.session_state.target}"
-    else:
-        st.warning("⚠️ OUT OF SCOPE: ADD TARGET TO GREEN ZONE")
+st.title("🏹 SMALLVILLE S.V. 6.9")
+t1, t2, t3 = st.tabs(["🚀 STRIKE", "📊 MATRIX", "📟 HUD"])
 
 with t2:
     st.subheader("SYSTEM INTEGRITY")
-    cols = st.columns(3)
-    for i, (cat, tools) in enumerate(ARSENAL.items()):
-        with cols[i]:
-            st.write(f"**{cat}**")
-            for t in tools:
-                ready = find_exe(t) is not None
-                st.write(f"{'✅' if ready else '❌'} {t.upper()}")
+    for t in TOOL_URLS.keys():
+        ready = os.path.exists(os.path.join(BIN_DIR, t))
+        st.write(f"{'✅' if ready else '❌'} {t.upper()}")
 
 with t3:
     st.markdown(f'<div class="terminal">{st.session_state.last_log}</div>', unsafe_allow_html=True)
-
-with t4:
-    st.subheader("⌨️ MANUAL COMMAND DECK")
-    cmd = st.text_input("ENTER OVERRIDE", "")
-    if st.button("🚀 EXECUTE"):
-        res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        st.code(f"{res.stdout}\n{res.stderr}")
