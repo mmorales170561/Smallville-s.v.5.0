@@ -2,10 +2,5 @@ streamlit
 requests
 web3
 slither-analyzer
-aderyn
-garak
-bloodhound
-certipy-ad
-skywrapper
 networkx
 streamlit-agraph
