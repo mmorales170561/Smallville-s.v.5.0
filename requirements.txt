@@ -5,3 +5,5 @@ slither-analyzer
 networkx
 streamlit-agraph
 fpdf2
+setuptools
+wheel
