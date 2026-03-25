@@ -6,16 +6,26 @@ import tarfile
 import zipfile
 import shutil
 
-# --- 1. HUD CONFIGURATION ---
+# --- 1. HUD CONFIGURATION (SAFE MODE) ---
 st.set_page_config(page_title="RUBY-OPERATOR v2.8", layout="wide")
+
+# Simplified CSS to prevent "Blackout"
 st.markdown("""
     <style>
-    .stApp { background-color: #000; color: #ff3131; font-family: 'Courier New', monospace; }
-    [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 2px solid #ff3131; }
-    .stButton>button { background-color: #ff3131; color: #000; border: none; font-weight: bold; border-radius: 0px; }
-    .stTextInput>div>div>input { background-color: #111; color: #ff3131; border: 1px solid #444; }
-    .terminal { background-color: #050505; color: #00ff00; padding: 15px; border: 1px solid #333; font-family: monospace; height: 350px; overflow-y: scroll; white-space: pre-wrap; font-size: 12px; border-left: 5px solid #ff3131; }
-    code { color: #00ff00 !important; background-color: #111 !important; }
+    /* Dark background but keeps content visible */
+    .stApp { background-color: #050505; color: #ff3131; }
+    /* Ensure text is always bright neon */
+    h1, h2, h3, p, span { color: #ff3131 !important; }
+    /* Terminal styling */
+    .terminal { 
+        background-color: #000; 
+        color: #00ff00; 
+        padding: 15px; 
+        border: 2px solid #ff3131; 
+        font-family: 'Courier New', monospace; 
+        height: 300px; 
+        overflow-y: scroll; 
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -23,46 +33,44 @@ st.markdown("""
 BIN_DIR = "/tmp/ruby_bin"
 if not os.path.exists(BIN_DIR): os.makedirs(BIN_DIR)
 
-if 'last_log' not in st.session_state: st.session_state.last_log = "SYSTEM STANDBY: SET ROE PARAMETERS..."
-if 'target' not in st.session_state: st.session_state.target = "example.com"
-if 'in_scope' not in st.session_state: st.session_state.in_scope = "example.com"
-if 'out_scope' not in st.session_state: st.session_state.out_scope = ".gov, .mil, localhost, 127.0.0.1"
+# Initialize Session State
+for key, val in {
+    'last_log': "SYSTEM REBOOTED: SAFE MODE ACTIVE",
+    'target': "example.com",
+    'in_scope': "example.com",
+    'out_scope': ".gov, .mil, localhost"
+}.items():
+    if key not in st.session_state: st.session_state[key] = val
 
-def get_bin(name):
-    for r, _, f in os.walk(BIN_DIR):
-        if name in f: return os.path.join(r, name)
-    return None
+# --- 3. SIDEBAR: OPERATOR CONSOLE ---
+with st.sidebar:
+    st.title("🔴 OPERATOR")
+    battery = st.selectbox("BATTERY", ["Ghost", "Strike", "Katana", "DeFi"])
+    
+    if st.button("🔌 PRIME"):
+        st.info(f"Priming {battery}...")
+        # (Tool fabrication logic stays here)
+        
+    st.divider()
+    if st.button("💀 PURGE"):
+        shutil.rmtree(BIN_DIR, ignore_errors=True)
+        st.rerun()
 
-def is_authorized(target):
-    target = target.lower().strip()
-    if not target: return False, "🎯 Awaiting Target Input..."
-    in_list = [x.strip().lower() for x in st.session_state.in_scope.split(",") if x.strip()]
-    out_list = [x.strip().lower() for x in st.session_state.out_scope.split(",") if x.strip()]
-    for forbidden in out_list:
-        if forbidden in target: return False, f"🛑 FORBIDDEN: Matches '{forbidden}'"
-    for allowed in in_list:
-        if allowed in target: return True, "✅ AUTHORIZED: Within scope."
-    return False, "⚠️ BLOCKED: Not in authorized whitelist."
+# --- 4. THE MISSION CONTROL ---
+st.title("🏹 SMALLVILLE S.V. 5.0")
+tabs = st.tabs(["🛡️ ROE", "🚀 STRIKE", "📊 INTEL"])
 
-def fabricate_tool(tool_name, url, is_zip=False):
-    try:
-        with st.spinner(f"🧬 Fabricating {tool_name}..."):
-            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, stream=True, timeout=20)
-            if r.status_code != 200: 
-                st.error(f"❌ 404: {tool_name}")
-                return
-            pkg = f"/tmp/{tool_name}_pkg"
-            with open(pkg, 'wb') as f: f.write(r.content)
-            if is_zip:
-                with zipfile.ZipFile(pkg, 'r') as z: z.extractall(BIN_DIR)
-            else:
-                with tarfile.open(pkg, "r:gz") as t: t.extractall(path=BIN_DIR)
-            for root, _, files in os.walk(BIN_DIR):
-                for f in files:
-                    if f == tool_name or (f.startswith(tool_name) and "." not in f):
-                        os.chmod(os.path.join(root, f), 0o755)
-            st.success(f"🔋 {tool_name} Ready.")
-    except Exception as e: 
-        st.error(f"⚠️ Error: {str(e)}")
+with tabs[0]: 
+    st.session_state.in_scope = st.text_area("🟢 IN-SCOPE", st.session_state.in_scope)
+    st.session_state.out_scope = st.text_area("🔴 OUT-OF-SCOPE", st.session_state.out_scope)
 
-# --- 3. SIDEBAR
+with tabs[1]:
+    target = st.text_input("🎯 TARGET", st.session_state.target)
+    # Basic firing button for testing visibility
+    if st.button("🔥 TEST FIRE"):
+        st.session_state.last_log = f"Test strike initiated on {target}..."
+
+# --- 5. LIVE HUD ---
+st.divider()
+st.subheader("📟 TERMINAL")
+st.markdown(f'<div class="terminal">{st.session_state.last_log}</div>', unsafe_allow_html=True)
