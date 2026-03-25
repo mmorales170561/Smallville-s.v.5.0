@@ -4,3 +4,4 @@ web3
 slither-analyzer
 networkx
 streamlit-agraph
+fpdf2
