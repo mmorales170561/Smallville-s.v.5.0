@@ -16,24 +16,23 @@ st.markdown("""
     .stButton>button { background-color: #ff3131; color: #000; border: none; font-weight: bold; border-radius: 0px; }
     .stTextInput>div>div>input { background-color: #111; color: #ff3131; border: 1px solid #444; }
     code { color: #00ff00 !important; background-color: #111 !important; }
-    .terminal { background-color: #050505; color: #00ff00; padding: 10px; border: 1px solid #333; font-family: monospace; height: 200px; overflow-y: scroll; }
+    .terminal { background-color: #050505; color: #00ff00; padding: 15px; border: 1px solid #333; font-family: monospace; height: 250px; overflow-y: scroll; white-space: pre-wrap; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. THE VOLATILE ARMORY (Binary Fabrication) ---
+# --- 2. THE VOLATILE ARMORY (Fabrication Engine) ---
 BIN_DIR = "/tmp/ruby_bin"
 if not os.path.exists(BIN_DIR):
     os.makedirs(BIN_DIR)
 
 def fabricate_tool(tool_name, url, is_zip=False):
-    """Downloads and extracts binaries with stability checks."""
-    path = os.path.join(BIN_DIR, tool_name)
+    """Hardened downloader for volatile environments."""
     try:
         with st.spinner(f"🧬 Fabricating {tool_name}..."):
             headers = {'User-Agent': 'Mozilla/5.0'}
             r = requests.get(url, headers=headers, stream=True, timeout=20)
             if r.status_code != 200:
-                st.error(f"❌ 404/Error: {tool_name} failed. Check link.")
+                st.error(f"❌ Misfire: {tool_name} (Status {r.status_code})")
                 return
 
             pkg = f"/tmp/{tool_name}_pkg"
@@ -47,18 +46,20 @@ def fabricate_tool(tool_name, url, is_zip=False):
                 with tarfile.open(pkg, "r:gz") as t:
                     t.extractall(path=BIN_DIR)
             
-            # Find binary and set permissions
+            # Recursive permission grant
             for root, dirs, files in os.walk(BIN_DIR):
                 for f in files:
                     if f == tool_name or (f.startswith(tool_name) and "." not in f):
                         os.chmod(os.path.join(root, f), 0o755)
-            st.success(f"🔋 {tool_name} Online.")
+            st.success(f"🔋 {tool_name} Ready.")
     except Exception as e:
         st.error(f"⚠️ Fabrication Error: {str(e)}")
 
 # --- 3. SIDEBAR: OPERATOR CONSOLE ---
 with st.sidebar:
     st.title("🔴 RUBY-OPERATOR")
+    st.caption("v2.6 Cloud-Native Strike Kit")
+    
     battery = st.selectbox("TACTICAL BATTERY", ["Ghost (Recon)", "DeFi (Web3)"])
     
     if st.button("🔌 PRIME ARMORY"):
@@ -70,7 +71,17 @@ with st.sidebar:
             
     st.divider()
     if st.button("🔍 DIAGNOSTICS"):
-        st.write("Current Armory Path: `/tmp/ruby_bin`")
-        st.write(os.listdir(BIN_DIR) if os.path.exists(BIN_DIR) else "Empty")
+        st.info(f"Path: {BIN_DIR}")
+        if os.path.exists(BIN_DIR):
+            st.write(os.listdir(BIN_DIR))
             
-    if st
+    if st.button("💀 BURN INSTANCE"):
+        shutil.rmtree(BIN_DIR, ignore_errors=True)
+        st.rerun()
+
+# --- 4. THE MISSION CONTROL ---
+tabs = st.tabs(["🚀 STRIKE OPS", "📊 INTELLIGENCE", "🧪 PAYLOAD LAB"])
+
+with tabs[0]:
+    st.header("🔫 THE RED KRYPTONITE GUN")
+    t_url
