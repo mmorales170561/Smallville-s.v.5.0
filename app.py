@@ -25,7 +25,7 @@ if not os.path.exists(BIN_DIR): os.makedirs(BIN_DIR)
 
 if 'last_log' not in st.session_state: st.session_state.last_log = "SYSTEM STANDBY: SET ROE PARAMETERS..."
 if 'target' not in st.session_state: st.session_state.target = "example.com"
-if 'in_scope' not in st.session_state: st.session_state.in_scope = "example.com, target-api.io"
+if 'in_scope' not in st.session_state: st.session_state.in_scope = "example.com"
 if 'out_scope' not in st.session_state: st.session_state.out_scope = ".gov, .mil, localhost, 127.0.0.1"
 
 def get_bin(name):
@@ -39,16 +39,18 @@ def is_authorized(target):
     in_list = [x.strip().lower() for x in st.session_state.in_scope.split(",") if x.strip()]
     out_list = [x.strip().lower() for x in st.session_state.out_scope.split(",") if x.strip()]
     for forbidden in out_list:
-        if forbidden in target: return False, f"🛑 FORBIDDEN: Target matches blacklist pattern '{forbidden}'"
+        if forbidden in target: return False, f"🛑 FORBIDDEN: Matches '{forbidden}'"
     for allowed in in_list:
-        if allowed in target: return True, "✅ AUTHORIZED: Target is within defined scope."
-    return False, "⚠️ BLOCKED: Target is NOT in the authorized whitelist."
+        if allowed in target: return True, "✅ AUTHORIZED: Within scope."
+    return False, "⚠️ BLOCKED: Not in authorized whitelist."
 
 def fabricate_tool(tool_name, url, is_zip=False):
     try:
         with st.spinner(f"🧬 Fabricating {tool_name}..."):
             r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, stream=True, timeout=20)
-            if r.status_code != 200: return st.error(f"❌ 404: {tool_name}")
+            if r.status_code != 200: 
+                st.error(f"❌ 404: {tool_name}")
+                return
             pkg = f"/tmp/{tool_name}_pkg"
             with open(pkg, 'wb') as f: f.write(r.content)
             if is_zip:
@@ -59,4 +61,8 @@ def fabricate_tool(tool_name, url, is_zip=False):
                 for f in files:
                     if f == tool_name or (f.startswith(tool_name) and "." not in f):
                         os.chmod(os.path.join(root, f), 0o755)
-            st.success(
+            st.success(f"🔋 {tool_name} Ready.")
+    except Exception as e: 
+        st.error(f"⚠️ Error: {str(e)}")
+
+# --- 3. SIDEBAR
