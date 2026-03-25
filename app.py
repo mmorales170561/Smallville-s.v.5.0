@@ -8,7 +8,7 @@ import shutil
 import io
 
 # --- 1. HUD CONFIG ---
-st.set_page_config(page_title="RUBY-OPERATOR v8.5", layout="wide")
+st.set_page_config(page_title="RUBY-OPERATOR v8.6", layout="wide")
 st.markdown("<style>.stApp { background-color: #050505; color: #ff3131; font-family: 'Courier New', monospace; } [data-testid='stSidebar'] { background-color: #0a0a0a; border-right: 1px solid #ff3131; } .terminal { background-color: #000; color: #00ff00; padding: 15px; border: 1px solid #333; height: 350px; overflow-y: scroll; white-space: pre-wrap; font-size: 11px; border-left: 5px solid #ff3131; } .stButton>button { background-color: #ff3131 !important; color: #000 !important; font-weight: bold; border-radius: 0px; width: 100%; border: none; } h1, h2, h3 { color: #ff3131 !important; }</style>", unsafe_allow_html=True)
 
 BIN_DIR = "/tmp/ruby_bin"
@@ -22,52 +22,64 @@ BATTERIES = {
 }
 
 # --- 3. PERSISTENCE ---
-if 'in_scope' not in st.session_state: st.session_state.in_scope = "example.com, target.local"
-if 'out_scope' not in st.session_state: st.session_state.out_scope = ".gov, .mil, 127.0.0.1"
-if 'target' not in st.session_state: st.session_state.target = ""
+if 'in_scope' not in st.session_state: st.session_state.in_scope = "example.com"
+if 'out_scope' not in st.session_state: st.session_state.out_scope = ".gov, .mil"
 
-# --- 4. SIDEBAR (CONTROL CENTER) ---
+# --- 4. SIDEBAR ---
 with st.sidebar:
     st.title("🔴 COMMAND")
-    
-    # Target Battery Selection
-    selected_battery = st.selectbox("🎯 TARGET BATTERY", list(BATTERIES.keys()), key='active_battery')
-    
+    sel_bat = st.selectbox("🎯 BATTERY", list(BATTERIES.keys()), key='active_bat')
     st.divider()
-    
-    # Scope Protection Logic
     st.subheader("🛡️ ROE PROTECTION")
-    st.text_area("🟢 GREEN ZONE (Authorized)", key='in_scope', help="Comma separated domains/IPs")
-    st.text_area("🔴 RED ZONE (Forbidden)", key='out_scope', help="Restricted suffixes or IPs")
-    
-    st.divider()
-    
+    st.text_area("🟢 GREEN ZONE", key='in_scope')
+    st.text_area("🔴 RED ZONE", key='out_scope')
     if st.button("🔌 PRIME OMNI-ARSENAL"):
-        # (Prime logic from v8.4 remains here)
         st.toast("Syncing Arsenal...")
         st.rerun()
-
     if st.button("💀 WIPE WORKSPACE"):
         shutil.rmtree(BIN_DIR, ignore_errors=True)
         os.makedirs(BIN_DIR)
         st.rerun()
 
 # --- 5. MAIN HUD ---
-st.title("🏹 SMALLVILLE S.V. 8.5")
+st.title("🏹 SMALLVILLE S.V. 8.6")
 t1, t2, t3, t4 = st.tabs(["🚀 STRIKE", "📊 MATRIX", "📟 HUD", "🛠️ TERMINAL"])
 
-# Scope Validation Logic
-target = st.session_state.target.strip().lower()
-in_list = [x.strip().lower() for x in st.session_state.in_scope.split(",") if x.strip()]
-out_list = [x.strip().lower() for x in st.session_state.out_scope.split(",") if x.strip()]
+# --- ROE VALIDATION ENGINE ---
+tgt = st.session_state.get('target_val', '').strip().lower()
+grn = [x.strip().lower() for x in st.session_state.in_scope.split(",") if x.strip()]
+red = [x.strip().lower() for x in st.session_state.out_scope.split(",") if x.strip()]
 
-is_authorized = any(domain in target for domain in in_list) if target else False
-is_forbidden = any(domain in target for domain in out_list) if target else False
+# Short-hand logic to prevent SyntaxErrors
+auth = any(d in tgt for d in grn) if tgt else False
+deny = any(d in tgt for d in red) if tgt else False
 
 with t1:
-    st.subheader(f"ENGAGEMENT: {selected_battery}")
-    st.text_input("SET TARGET", key="target", placeholder="e.g. example.com")
+    st.subheader(f"ENGAGEMENT: {sel_bat}")
+    st.text_input("SET TARGET", key="target_val", placeholder="e.g. target.com")
     
-    if not target:
+    if not tgt:
         st.info("Waiting for Target Acquisition...")
-    elif is
+    elif deny:
+        st.error("🛑 INTERLOCK: Target is in RED ZONE.")
+    elif not auth:
+        st.warning("⚠️ UNAUTHORIZED: Target not in GREEN ZONE.")
+    else:
+        st.success("✅ AUTHORIZED: Scope Verified.")
+        st.divider()
+        if st.button("🔥 INITIATE FULL STRIKE"):
+            st.status(f"Executing {sel_bat} against {tgt}...")
+
+with t2:
+    st.subheader("SYSTEM INTEGRITY")
+    all_tools = [t for sub in BATTERIES.values() for t in sub]
+    cols = st.columns(4)
+    for i, name in enumerate(all_tools):
+        ready = os.path.exists(os.path.join(BIN_DIR, name))
+        cols[i % 4].write(f"{'✅' if ready else '❌'} {name.upper()}")
+
+with t4:
+    cmd_in = st.text_input("CMD >", key="term")
+    if st.button("🚀 EXECUTE"):
+        res = subprocess.run(cmd_in, shell=True, capture_output=True, text=True)
+        st.code(res.stdout + res.stderr)
