@@ -1,5 +1,7 @@
-git
+nmap
+tor
+proxychains4
 curl
 wget
-ca-certificates
-libpcap0.8
+git
+build-essential
