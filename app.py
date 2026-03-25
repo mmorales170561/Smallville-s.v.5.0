@@ -5,10 +5,9 @@ import requests
 import tarfile
 import zipfile
 import shutil
-import platform
 
 # --- 1. HUD CONFIG ---
-st.set_page_config(page_title="RUBY-OPERATOR v6.6", layout="wide")
+st.set_page_config(page_title="RUBY-OPERATOR v6.7", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #ff3131; font-family: 'Courier New', monospace; }
@@ -22,22 +21,33 @@ st.markdown("""
 BIN_DIR = "/tmp/ruby_bin"
 if not os.path.exists(BIN_DIR): os.makedirs(BIN_DIR)
 
-# --- 2. REGISTRY ---
+# --- 2. GLOBAL STATE ---
+if 'battery_type' not in st.session_state: st.session_state.battery_type = "Web2"
+if 'last_log' not in st.session_state: st.session_state.last_log = "SYSTEM REBOOTED."
+
+# --- 3. SIDEBAR (PLACED FIRST FOR STABILITY) ---
+with st.sidebar:
+    st.title("🔴 COMMAND")
+    st.session_state.battery_type = st.radio("ENVIRONMENT", ["Web2", "Web3", "AI Agent"])
+    
+    st.divider()
+    if st.button("🔌 PRIME ARSENAL"):
+        st.toast("Fabricating tools in background...")
+        # (Fabrication logic would go here or call a function)
+        
+    if st.button("💀 BURN WORKSPACE"):
+        shutil.rmtree(BIN_DIR, ignore_errors=True)
+        os.makedirs(BIN_DIR)
+        st.rerun()
+
+# --- 4. TOOL REGISTRY ---
 ARSENAL = {
     "Web2": ["subfinder", "httpx", "ffuf", "katana"],
     "Web3": ["aderyn", "arjun"],
     "AI Agent": ["trufflehog", "sqlmap", "commix"]
 }
 
-# --- 3. HELPER ENGINES ---
-def run_cmd(cmd):
-    try:
-        # Run command and capture both output and error
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
-        return f"{result.stdout}\n{result.stderr}"
-    except Exception as e:
-        return f"[!] EXECUTION ERROR: {str(e)}"
-
+# --- 5. ENGINES ---
 def find_exe(name):
     for root, _, files in os.walk(BIN_DIR):
         for f in files:
@@ -47,11 +57,11 @@ def find_exe(name):
                 return p
     return shutil.which(name)
 
-# --- 4. MAIN UI ---
-st.title("🏹 SMALLVILLE S.V. 6.6")
+# --- 6. MAIN HUD ---
+st.title("🏹 SMALLVILLE S.V. 6.7")
 t1, t2, t3, t4 = st.tabs(["🚀 STRIKE", "📊 MATRIX", "📟 HUD", "🛠️ TERMINAL"])
 
-with t2: # Matrix Status
+with t2:
     st.subheader("SYSTEM INTEGRITY")
     cols = st.columns(3)
     for i, (cat, tools) in enumerate(ARSENAL.items()):
@@ -61,23 +71,12 @@ with t2: # Matrix Status
                 ready = find_exe(t) is not None
                 st.write(f"{'✅' if ready else '❌'} {t.upper()}")
 
-with t4: # The Manual Installer / Terminal
+with t4:
     st.subheader("⌨️ MANUAL COMMAND DECK")
-    st.info("Direct access to /tmp/ruby_bin. Use for manual installs.")
-    
-    cmd_input = st.text_input("ENTER COMMAND (e.g., pip install sqlmap --target /tmp/ruby_bin)", "")
+    cmd_input = st.text_input("ENTER COMMAND", "")
     if st.button("🚀 EXECUTE"):
-        with st.spinner("Executing..."):
-            output = run_cmd(f"cd {BIN_DIR} && {cmd_input}")
-            st.code(output)
+        result = subprocess.run(cmd_input, shell=True, capture_output=True, text=True)
+        st.code(f"{result.stdout}\n{result.stderr}")
 
-    st.divider()
-    st.subheader("📂 WORKSPACE EXPLORER")
-    if st.button("🔎 RE-SCAN DIRECTORY"):
-        files = []
-        for r, d, f in os.walk(BIN_DIR):
-            for file in f: files.append(os.path.join(r, file))
-        st.code("\n".join(files) if files else "Workspace Empty.")
-
-with t3: # HUD
-    st.markdown('<div class="terminal">SYSTEM READY. WAITING FOR INPUT...</div>', unsafe_allow_html=True)
+with t3:
+    st.markdown(f'<div class="terminal">{st.session_state.last_log}</div>', unsafe_allow_html=True)
