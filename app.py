@@ -107,16 +107,26 @@ with s_tab:
                 final_output.append(f"--- [PROBE] ACTIVE ---\n{res.stdout if res.stdout else '[!] No Hosts'}")
 
             # STRIKE
+            # --- STEP 3: STRIKE (NUCLEI) ---
             nuc_path = find_executable("nuclei")
             if nuc_path:
-                s.write("☢️ Firing Nuclei...")
-                cmd = [nuc_path, "-u", st.session_state.target, "-silent", "-ni", "-severity", "critical,high"]
+                s.write("☢️ Firing Nuclei (Deep Scan)...")
+                # -rl 5: Only 5 requests per second (prevents timeouts)
+                # -concurrency 5: Low parallel tasks
+                cmd = [nuc_path, "-u", st.session_state.target, "-silent", "-ni", "-rl", "5", "-c", "5", "-severity", "critical,high"]
                 st.session_state.last_log += f"EXE: {' '.join(cmd)}\n"
-                res = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
-                final_output.append(f"--- [STRIKE] VULNS ---\n{res.stdout if res.stdout else '[!] No Vulns'}")
-
-            st.session_state.last_log = "\n\n".join(final_output)
-            s.update(label="Strike Complete.", state="complete")
+                
+                try:
+                    # Increased timeout to 300s
+                    res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                    nuc_out = res.stdout.strip()
+                    final_output.append(f"--- [STRIKE] VULNS ---\n{nuc_out if nuc_out else '[!] No Vulns'}")
+                except subprocess.TimeoutExpired as e:
+                    # Capture partial output if available
+                    partial = e.stdout.decode() if e.stdout else "No partial data."
+                    final_output.append(f"⚠️ STRIKE TIMEOUT: Scan exceeded 5m.\nPARTIAL RESULTS:\n{partial}")
+                except Exception as e:
+                    final_output.append(f"❌ Nuclei Error: {str(e)}")
 
 # --- 6. TERMINAL ---
 st.divider()
