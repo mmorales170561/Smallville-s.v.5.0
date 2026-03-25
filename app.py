@@ -6,6 +6,7 @@ import tarfile
 import zipfile
 import shutil
 import time
+import platform
 from datetime import datetime
 
 # --- 1. SAFE PDF IMPORT ---
@@ -19,7 +20,7 @@ except ImportError:
 # --- 2. GLOBAL STATE ---
 INITIAL_STATE = {
     'target': "example.com",
-    'last_log': "SYSTEM ONLINE. ARSENAL V5.5 READY.",
+    'last_log': f"SYSTEM ONLINE. HOST: {platform.node()} | PY: {platform.python_version()}",
     'in_scope': "example.com",
     'out_scope': ".gov, .mil, localhost",
     'battery_type': "Web2"
@@ -30,14 +31,13 @@ for key, val in INITIAL_STATE.items():
         st.session_state[key] = val
 
 # --- 3. HUD CONFIG ---
-st.set_page_config(page_title="RUBY-OPERATOR v5.5", layout="wide")
+st.set_page_config(page_title="RUBY-OPERATOR v5.6", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #ff3131; font-family: 'Courier New', monospace; }
     [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 1px solid #ff3131; }
     .terminal { background-color: #000; color: #00ff00; padding: 15px; border: 1px solid #333; height: 500px; overflow-y: scroll; white-space: pre-wrap; font-size: 11px; border-left: 5px solid #ff3131; }
     .stButton>button { background-color: #ff3131 !important; color: #000 !important; font-weight: bold; border-radius: 0px; width: 100%; border: none; }
-    .stCheckbox { color: #00ff00 !important; }
     h1, h2, h3 { color: #ff3131 !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -45,11 +45,12 @@ st.markdown("""
 BIN_DIR = "/tmp/ruby_bin"
 if not os.path.exists(BIN_DIR): os.makedirs(BIN_DIR)
 
-# --- 4. THE COMPLETE 22+ TOOL REGISTRY ---
+# --- 4. THE COMPATIBILITY REGISTRY ---
+# We use binary releases to avoid PIP/Python 3.14 compilation errors
 ARSENAL = {
     "Web2": ["subfinder", "amass", "httpx", "waybackurls", "gau", "assetfinder", "ffuf", "katana", "dalfox", "dirsearch"],
-    "Web3": ["aderyn", "slither", "mythril", "arjun"],
-    "AI Agent": ["trufflehog", "gitleaks", "garak", "pyrit", "sqlmap", "commix", "tplimap"]
+    "Web3": ["aderyn", "slither", "arjun"],
+    "AI Agent": ["trufflehog", "gitleaks", "garak", "sqlmap", "commix"]
 }
 
 TOOL_URLS = {
@@ -68,7 +69,8 @@ TOOL_URLS = {
     "commix": "https://github.com/commixproject/commix/tarball/master",
     "trufflehog": "https://github.com/trufflesecurity/trufflehog/releases/download/v3.63.11/trufflehog_3.63.11_linux_amd64.tar.gz",
     "gitleaks": "https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz",
-    "arjun": "https://github.com/s0md3v/Arjun/archive/refs/heads/master.zip"
+    "arjun": "https://github.com/s0md3v/Arjun/archive/refs/heads/master.zip",
+    "aderyn": "https://github.com/Cyfrin/aderyn/releases/download/v0.1.0/aderyn-x86_64-unknown-linux-gnu.tar.gz"
 }
 
 # --- 5. ENHANCED ENGINES ---
@@ -82,24 +84,33 @@ def find_exe(name):
     return shutil.which(name)
 
 def fabricate_core(tool_name):
+    """Fallback to PIP only for pure python tools that lack binaries."""
     if tool_name not in TOOL_URLS:
-        if tool_name in ["garak", "pyrit", "slither", "mythril", "aderyn"]:
-            try: subprocess.run(["pip", "install", tool_name, "--quiet"], check=True); return True
+        if tool_name in ["garak", "slither"]:
+            try:
+                # Use --prefer-binary to avoid building from source on incompatible Py versions
+                subprocess.run(["pip", "install", tool_name, "--prefer-binary", "--quiet"], check=True)
+                return True
             except: return False
         return False
+        
     url = TOOL_URLS[tool_name]
     try:
         r = requests.get(url, stream=True, timeout=20)
         ext = ".zip" if "zip" in url or "master" in url or "ball" in url else ".tar.gz"
         pkg_path = f"/tmp/{tool_name}{ext}"
         with open(pkg_path, 'wb') as f: f.write(r.content)
+        
         if "zip" in ext:
             with zipfile.ZipFile(pkg_path, 'r') as z: z.extractall(BIN_DIR)
         else:
             with tarfile.open(pkg_path, "r:gz") as t: t.extractall(path=BIN_DIR)
+        
         os.remove(pkg_path)
         return True
-    except: return False
+    except Exception as e:
+        st.error(f"Error fabricating {tool_name}: {e}")
+        return False
 
 def is_authorized(target):
     target = target.lower().strip()
@@ -127,11 +138,11 @@ with st.sidebar:
             for tool in set(all_tools):
                 s.write(f"📦 Processing {tool}...")
                 fabricate_core(tool); time.sleep(0.1)
-            s.update(label="Arsenal 100% Ready.", state="complete")
+            s.update(label="Arsenal Ready (Compatibility Mode).", state="complete")
         st.rerun()
 
 # --- 7. MISSION CONTROL ---
-st.title("🏹 SMALLVILLE S.V. 5.5")
+st.title("🏹 SMALLVILLE S.V. 5.6")
 auth, msg = is_authorized(st.session_state.target)
 t1, t2, t3 = st.tabs(["🚀 STRIKE OPS", "📊 ARSENAL MATRIX", "📟 LIVE HUD"])
 
@@ -147,7 +158,7 @@ with t1: # STRIKE OPS
         for i, tool in enumerate(current_tools):
             ready = find_exe(tool) is not None
             with cols[i % 3]:
-                if st.checkbox(f"{'✅' if ready else '❌'} {tool.upper()}", value=ready, disabled=not ready, key=f"check_{tool}"):
+                if st.checkbox(f"{'✅' if ready else '❌'} {tool.upper()}", value=ready, disabled=not ready, key=f"c_{tool}"):
                     selected_tools.append(tool)
         
         st.divider()
@@ -157,12 +168,14 @@ with t1: # STRIKE OPS
                 for tool in selected_tools:
                     exe = find_exe(tool)
                     s.write(f"🚀 Firing {tool.upper()}...")
+                    # Basic command mapping
                     cmd = [exe, "-u", st.session_state.target] if tool not in ["subfinder", "amass", "trufflehog"] else [exe, "-d", st.session_state.target]
                     if tool == "trufflehog": cmd = [exe, "git", st.session_state.target, "--only-verified"]
+                    
                     try:
-                        res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-                        final_out.append(f"=== {tool.upper()} ===\n{res.stdout}")
-                    except: final_out.append(f"❌ {tool.upper()} Failed or Timed Out.")
+                        res = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+                        final_out.append(f"=== {tool.upper()} ===\n{res.stdout}\n{res.stderr}")
+                    except: final_out.append(f"❌ {tool.upper()} Failed (Timeout).")
                 st.session_state.last_log = "\n\n".join(final_out)
             st.rerun()
     else: st.error(msg)
