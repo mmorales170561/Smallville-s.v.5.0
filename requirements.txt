@@ -7,3 +7,5 @@ garak
 bloodhound
 certipy-ad
 skywrapper
+networkx
+streamlit-agraph
