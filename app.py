@@ -82,55 +82,60 @@ with t_tab:
 with s_tab:
     target = st.text_input("🎯 TARGET", "example.com")
     if st.button("🔥 INITIATE FULL AUTO-STRIKE"):
+        # Initialize terminal with a startup sequence
+        st.session_state.last_log = f"🚀 [INIT] STRIKE SEQUENCE AUTHORIZED: {st.session_state.target}\n"
         final_output = []
-        # Clear previous logs for a fresh strike
-        st.session_state.last_log = "--- INITIALIZING STRIKE SEQUENCE ---\n"
-        
+
         with st.status("⛓️ Chain Executing...", expanded=True) as s:
-            # --- STEP 1: SUBFINDER ---
+            
+            # --- STEP 1: GHOST RECON (SUBFINDER) ---
             sub_path = find_executable("subfinder")
             if sub_path:
                 s.write("📡 Firing Subfinder...")
+                cmd = [sub_path, "-d", st.session_state.target, "-silent"]
+                st.session_state.last_log += f"EXE: {' '.join(cmd)}\n"
                 try:
-                    # Added timeout to prevent hanging
-                    sub_res = subprocess.run([sub_path, "-d", target, "-silent"], 
-                                           capture_output=True, text=True, timeout=60)
-                    out = sub_res.stdout if sub_res.stdout else "[!] No Subdomains Found"
-                    final_output.append(f"--- SUBDOMAINS ---\n{out}")
-                    st.session_state.last_log += f"\n[GHOST] Recon Complete on {target}"
-                except subprocess.TimeoutExpired:
-                    final_output.append("--- SUBDOMAINS ---\n❌ Subfinder Timed Out.")
+                    sub_res = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+                    sub_out = sub_res.stdout.strip() if sub_res.stdout else ""
+                    final_output.append(f"--- [RECON] SUBDOMAINS ---\n{sub_out if sub_out else '[!] No Subdomains Found'}")
+                    st.session_state.last_log += f"DONE: Found {len(sub_out.splitlines())} assets.\n"
+                except Exception as e:
+                    final_output.append(f"❌ Subfinder Misfire: {str(e)}")
             
-            # --- STEP 2: HTTPX ---
+            # --- STEP 2: PROBE (HTTPX) ---
             htx_path = find_executable("httpx")
             if htx_path:
                 s.write("🔍 Firing Httpx...")
-                # Use subdomains if found, otherwise use root target
-                input_data = sub_res.stdout if (sub_path and sub_res.stdout.strip()) else target
+                # Logic: If subfinder found nothing, probe the main target
+                input_data = sub_out if (sub_path and sub_out) else st.session_state.target
+                # Clean input data to prevent shell injection but allow pipes
+                cmd = f"echo '{input_data}' | {htx_path} -silent -sc -td -title"
+                st.session_state.last_log += f"EXE: {cmd}\n"
                 try:
-                    # Added shell execution with input pipe
-                    htx_res = subprocess.run(f"echo '{input_data}' | {htx_path} -silent -sc -td", 
-                                           shell=True, capture_output=True, text=True, timeout=60)
-                    out = htx_res.stdout if htx_res.stdout else "[!] No Active Hosts"
-                    final_output.append(f"--- HTTP PROBE ---\n{out}")
+                    htx_res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=90)
+                    htx_out = htx_res.stdout.strip()
+                    final_output.append(f"--- [PROBE] ACTIVE HOSTS ---\n{htx_out if htx_out else '[!] No Active Hosts Detected'}")
+                    st.session_state.last_log += f"DONE: Probed {len(htx_out.splitlines())} hosts.\n"
                 except Exception as e:
-                    final_output.append(f"--- HTTP PROBE ---\n❌ Httpx Error: {str(e)}")
+                    final_output.append(f"❌ Httpx Misfire: {str(e)}")
 
-            # --- STEP 3: NUCLEI ---
+            # --- STEP 3: STRIKE (NUCLEI) ---
             nuc_path = find_executable("nuclei")
             if nuc_path:
                 s.write("☢️ Firing Nuclei...")
+                # We target the main domain for the deep scan
+                cmd = [nuc_path, "-u", st.session_state.target, "-silent", "-ni", "-severity", "critical,high"]
+                st.session_state.last_log += f"EXE: {' '.join(cmd)}\n"
                 try:
-                    # Running with -ni (no interact) and -rl (rate limit) for Streamlit stability
-                    nuc_res = subprocess.run([nuc_path, "-u", target, "-silent", "-ni", "-rl", "10", "-severity", "critical,high"], 
-                                           capture_output=True, text=True, timeout=120)
-                    out = nuc_res.stdout if nuc_res.stdout else "[!] No Vulnerabilities Detected"
-                    final_output.append(f"--- NUCLEI VULNS ---\n{out}")
+                    nuc_res = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+                    nuc_out = nuc_res.stdout.strip()
+                    final_output.append(f"--- [STRIKE] VULNERABILITIES ---\n{nuc_out if nuc_out else '[!] No Critical Vulns Detected'}")
+                    st.session_state.last_log += "DONE: Nuclei Strike Finished.\n"
                 except Exception as e:
-                    final_output.append(f"--- NUCLEI VULNS ---\n❌ Nuclei Error: {str(e)}")
+                    final_output.append(f"❌ Nuclei Misfire: {str(e)}")
 
-            # --- FINAL UPDATE ---
-            st.session_state.last_log = "\n\n".join(final_output)
+            # --- RENDER RESULTS ---
+            st.session_state.last_log += "\n--- [FINAL REPORT] ---\n" + "\n\n".join(final_output)
             s.update(label="Strike Sequence Complete.", state="complete")
 
 # --- 5. TERMINAL ---
