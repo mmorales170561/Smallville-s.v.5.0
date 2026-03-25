@@ -2,106 +2,52 @@ import streamlit as st
 import subprocess
 import os
 import requests
-import json
-import time
+import zipfile
+import tarfile
+import shutil
+import io
 
-# --- 1. T2 CORE CONFIG ---
-st.set_page_config(page_title="SMALLVILLE T2 VANGUARD", layout="wide")
-st.markdown("<style>.stApp { background-color: #050505; color: #ff3131; font-family: 'Courier New', monospace; } [data-testid='stSidebar'] { background-color: #0a0a0a; border-right: 1px solid #ff3131; } .terminal { background-color: #000; color: #00ff00; padding: 15px; border: 1px solid #333; height: 400px; overflow-y: scroll; white-space: pre-wrap; font-size: 12px; border-left: 5px solid #ff3131; } .stButton>button { background-color: #ff3131 !important; color: #000 !important; font-weight: bold; border-radius: 0px; width: 100%; border: 1px solid #ff3131; transition: 0.3s; } .stButton>button:hover { background-color: #000 !important; color: #ff3131 !important; }</style>", unsafe_allow_html=True)
+# --- 1. HUD CONFIG ---
+st.set_page_config(page_title="SMALLVILLE T2 V9.1", layout="wide")
+st.markdown("<style>.stApp { background-color: #050505; color: #ff3131; font-family: 'Courier New', monospace; } [data-testid='stSidebar'] { background-color: #0a0a0a; border-right: 1px solid #ff3131; } .terminal { background-color: #000; color: #00ff00; padding: 15px; border: 1px solid #333; height: 450px; overflow-y: scroll; white-space: pre-wrap; font-size: 12px; border-left: 5px solid #ff3131; } .stButton>button { background-color: #ff3131 !important; color: #000 !important; font-weight: bold; border-radius: 0px; width: 100%; border: none; } h1, h2, h3 { color: #ff3131 !important; }</style>", unsafe_allow_html=True)
 
-# T2 Workspaces (Simulating persistence)
 BIN_DIR = "/tmp/ruby_bin"
 LOOT_DIR = "/tmp/ruby_loot"
 for d in [BIN_DIR, LOOT_DIR]:
     if not os.path.exists(d): os.makedirs(d)
 
-# --- 2. THE NOTIFICATION UPLINK ---
-def send_alert(message):
-    """Sends tactical alerts to a Discord/Slack Webhook."""
-    webhook_url = st.session_state.get('webhook_url', '')
-    if webhook_url:
-        payload = {"content": f"🚨 **SMALLVILLE T2 ALERT**: {message}"}
+# --- 2. BATTERY & PERSISTENCE ---
+BATTERIES = {
+    "Web2 (Recon)": ["subfinder", "httpx", "katana", "nuclei"],
+    "Web3 (Chain)": ["aderyn", "arjun"],
+    "AI Agents": ["trufflehog", "sqlmap"]
+}
+
+if 'in_scope' not in st.session_state: st.session_state.in_scope = "example.com"
+if 'out_scope' not in st.session_state: st.session_state.out_scope = ".gov, .mil"
+if 'term_logs' not in st.session_state: st.session_state.term_logs = "TERMINAL READY..."
+
+# --- 3. FORGE ENGINE ---
+def forge_arsenal():
+    status = st.status("🛠️ FORGING OMNI-ARSENAL...", expanded=True)
+    bins = {
+        "subfinder": "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip",
+        "httpx": "https://github.com/projectdiscovery/httpx/releases/download/v1.6.0/httpx_1.6.0_linux_amd64.zip",
+        "nuclei": "https://github.com/projectdiscovery/nuclei/releases/download/v3.2.9/nuclei_3.2.9_linux_amd64.zip",
+        "katana": "https://github.com/projectdiscovery/katana/releases/download/v1.1.0/katana_1.1.0_linux_amd64.zip",
+        "aderyn": "https://github.com/Cyfrin/aderyn/releases/download/aderyn-v0.6.8/aderyn-x86_64-unknown-linux-gnu.tar.xz"
+    }
+    for name, url in bins.items():
         try:
-            requests.post(webhook_url, json=payload, timeout=5)
-        except:
-            pass
-
-# --- 3. THE AUTOMATED CHAIN ENGINE ---
-def run_t2_chain(target):
-    """Tier 2 Logic: Recon -> Filter -> Scan -> Alert"""
-    log = st.status(f"🛰️ INITIALIZING CHAIN: {target}", expanded=True)
-    
-    # PHASE 1: RECON
-    log.write("🔍 Phase 1: Subdomain Discovery...")
-    # Example: subfinder -d target.com -o loot.txt
-    loot_file = os.path.join(LOOT_DIR, f"{target}_subs.txt")
-    subprocess.run(f"{BIN_DIR}/subfinder -d {target} -o {loot_file}", shell=True, capture_output=True)
-    
-    with open(loot_file, 'r') as f:
-        subs = f.readlines()
-    log.write(f"✅ Found {len(subs)} subdomains.")
-    
-    # PHASE 2: AUTOMATED FILTERING (HTTPX)
-    log.write("⚡ Phase 2: Probing Alive Hosts...")
-    alive_file = os.path.join(LOOT_DIR, f"{target}_alive.txt")
-    subprocess.run(f"cat {loot_file} | {BIN_DIR}/httpx -o {alive_file}", shell=True, capture_output=True)
-    
-    # PHASE 3: VULNERABILITY SCAN (NUCLEI)
-    log.write("🧪 Phase 3: Targeted Vulnerability Scan...")
-    vuln_file = os.path.join(LOOT_DIR, f"{target}_vulns.txt")
-    subprocess.run(f"{BIN_DIR}/nuclei -l {alive_file} -severity critical,high -o {vuln_file}", shell=True, capture_output=True)
-    
-    # PHASE 4: ALERTING
-    if os.path.exists(vuln_file) and os.path.getsize(vuln_file) > 0:
-        send_alert(f"CRITICAL VULNS FOUND ON {target}. Check Loot Tab.")
-        log.update(label="🔥 CHAIN COMPLETE: VULNERABILITIES DETECTED", state="error")
-    else:
-        log.update(label="🛡️ CHAIN COMPLETE: NO CRITICALS FOUND", state="complete")
-
-# --- 4. SIDEBAR & CONTROL ---
-with st.sidebar:
-    st.title("🔴 T2 COMMAND")
-    st.text_input("📡 WEBHOOK URL", key="webhook_url", type="password", help="Discord/Slack Webhook for 24/7 Alerts")
-    
-    st.divider()
-    if st.button("🔌 PRIME ARSENAL"):
-        # Logic from v8.8
-        st.toast("Forging T2 Engines...")
-        st.rerun()
-        
-    st.divider()
-    st.subheader("🛡️ ROE PROTECTION")
-    st.text_area("🟢 AUTHORIZED", key='in_scope', value="example.com")
-    st.text_area("🔴 FORBIDDEN", key='out_scope', value=".gov, .mil")
-
-# --- 5. MAIN HUD ---
-st.title("🏹 SMALLVILLE T2 VANGUARD")
-t1, t2, t3, t4 = st.tabs(["🚀 STRIKE", "💰 LOOT", "📊 MATRIX", "🛠️ TERMINAL"])
-
-with t1:
-    target = st.text_input("TARGET ACQUISITION", key="tgt_input")
-    if st.button("🔥 INITIATE AUTOMATED CHAIN"):
-        if target:
-            run_t2_chain(target)
-        else:
-            st.warning("No target acquired.")
-
-with t2:
-    st.subheader("📋 COLLECTED INTEL (LOOT)")
-    loot_files = os.listdir(LOOT_DIR)
-    if loot_files:
-        selected_file = st.selectbox("Select Loot File", loot_files)
-        with open(os.path.join(LOOT_DIR, selected_file), 'r') as f:
-            st.code(f.read())
-        st.download_button("📥 Download Loot", f.read(), file_name=selected_file)
-    else:
-        st.info("No loot collected yet.")
-
-with t3:
-    # Matrix logic from v8.8
-    st.subheader("SYSTEM INTEGRITY")
-    tools = ["subfinder", "httpx", "katana", "nuclei", "aderyn", "arjun", "trufflehog", "sqlmap"]
-    cols = st.columns(4)
-    for i, name in enumerate(tools):
-        ready = os.path.exists(os.path.join(BIN_DIR, name))
-        cols[i % 4].write(f"{'✅' if ready else '❌'} {name.upper()}")
+            r = requests.get(url, timeout=20)
+            if url.endswith(".zip"):
+                with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+                    for f in z.namelist():
+                        if f.endswith(name) and not f.endswith(('.md', '.txt')):
+                            with open(os.path.join(BIN_DIR, name), "wb") as b: b.write(z.read(f))
+            elif url.endswith(".tar.xz"):
+                with open("/tmp/t.tar.xz", "wb") as f: f.write(r.content)
+                subprocess.run(["tar", "-xvf", "/tmp/t.tar.xz", "-C", BIN_DIR], capture_output=True)
+                for r_dir, _, files in os.walk(BIN_DIR):
+                    if "aderyn" in files and r_dir != BIN_DIR:
+                        shutil.move(os.path.join(r_dir, "aderyn"), os.path.join(BIN_DIR, "aderyn
