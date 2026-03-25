@@ -34,16 +34,29 @@ def find_executable(name):
 def fabricate_tool(tool_name, url, is_zip=False):
     try:
         with st.sidebar:
+            # Step 1: Force break the file lock if it exists
+            target_path = os.path.join(BIN_DIR, tool_name)
+            if os.path.exists(target_path):
+                try:
+                    os.remove(target_path) # Try to delete the specific file
+                except:
+                    # If remove fails, move it to a trash name to free the primary path
+                    os.rename(target_path, f"{target_path}.old_{time.time()}")
+
+            # Step 2: Download the fresh binary
             r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, stream=True, timeout=20)
             pkg = f"/tmp/{tool_name}_pkg"
             with open(pkg, 'wb') as f: f.write(r.content)
+            
+            # Step 3: Unpack
             if is_zip:
                 with zipfile.ZipFile(pkg, 'r') as z: z.extractall(BIN_DIR)
             else:
                 with tarfile.open(pkg, "r:gz") as t: t.extractall(path=BIN_DIR)
-            st.sidebar.success(f"🔋 {tool_name} Unpacked.")
-    except Exception as e: st.sidebar.error(f"⚠️ Fabricator Error: {str(e)}")
-
+            
+            st.sidebar.success(f"🔋 {tool_name} Refreshed.")
+    except Exception as e: 
+        st.sidebar.error(f"⚠️ Fabricator Error: {str(e)}")
 # --- 3. SIDEBAR ---
 with st.sidebar:
     st.title("🔴 OPERATOR")
