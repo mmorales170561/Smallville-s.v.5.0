@@ -7,7 +7,7 @@ import zipfile
 import shutil
 
 # --- 1. HUD CONFIG ---
-st.set_page_config(page_title="RUBY-OPERATOR v6.7", layout="wide")
+st.set_page_config(page_title="RUBY-OPERATOR v6.8", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #ff3131; font-family: 'Courier New', monospace; }
@@ -21,19 +21,35 @@ st.markdown("""
 BIN_DIR = "/tmp/ruby_bin"
 if not os.path.exists(BIN_DIR): os.makedirs(BIN_DIR)
 
-# --- 2. GLOBAL STATE ---
-if 'battery_type' not in st.session_state: st.session_state.battery_type = "Web2"
-if 'last_log' not in st.session_state: st.session_state.last_log = "SYSTEM REBOOTED."
+# --- 2. INITIALIZE THE VAULT (Session State) ---
+# This block ensures data persists between clicks
+state_defaults = {
+    'battery_type': 'Web2',
+    'in_scope': 'example.com',
+    'out_scope': '.gov, .mil',
+    'last_log': 'SYSTEM ONLINE.',
+    'target': 'example.com'
+}
+for key, val in state_defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 
-# --- 3. SIDEBAR (PLACED FIRST FOR STABILITY) ---
+# --- 3. SIDEBAR (The Command Center) ---
 with st.sidebar:
     st.title("🔴 COMMAND")
-    st.session_state.battery_type = st.radio("ENVIRONMENT", ["Web2", "Web3", "AI Agent"])
+    
+    # Use 'key' to link widgets directly to session_state
+    st.radio("ENVIRONMENT", ["Web2", "Web3", "AI Agent"], key='battery_type')
     
     st.divider()
+    st.subheader("🛡️ ROE PROTECTION")
+    st.text_area("🟢 GREEN ZONE", key='in_scope', help="Allowed domains (comma separated)")
+    st.text_area("🔴 RED ZONE", key='out_scope', help="Forbidden patterns")
+
     if st.button("🔌 PRIME ARSENAL"):
-        st.toast("Fabricating tools in background...")
-        # (Fabrication logic would go here or call a function)
+        st.session_state.last_log = "CORE INJECTION INITIATED..."
+        # Logic for tool fabrication...
+        st.rerun()
         
     if st.button("💀 BURN WORKSPACE"):
         shutil.rmtree(BIN_DIR, ignore_errors=True)
@@ -47,7 +63,6 @@ ARSENAL = {
     "AI Agent": ["trufflehog", "sqlmap", "commix"]
 }
 
-# --- 5. ENGINES ---
 def find_exe(name):
     for root, _, files in os.walk(BIN_DIR):
         for f in files:
@@ -57,9 +72,24 @@ def find_exe(name):
                 return p
     return shutil.which(name)
 
-# --- 6. MAIN HUD ---
-st.title("🏹 SMALLVILLE S.V. 6.7")
+# --- 5. MAIN HUD ---
+st.title("🏹 SMALLVILLE S.V. 6.8")
 t1, t2, t3, t4 = st.tabs(["🚀 STRIKE", "📊 MATRIX", "📟 HUD", "🛠️ TERMINAL"])
+
+# Check authorization
+auth = any(g.strip().lower() in st.session_state.target.lower() for g in st.session_state.in_scope.split(",") if g.strip())
+forbidden = any(r.strip().lower() in st.session_state.target.lower() for r in st.session_state.out_scope.split(",") if r.strip())
+
+with t1:
+    st.text_input("🎯 TARGET SECTOR", key='target')
+    if forbidden: 
+        st.error("🛑 INTERLOCK ENGAGED: TARGET IS IN RED ZONE")
+    elif auth:
+        st.success("✅ AUTHORIZED STRIKE ZONE")
+        if st.button("🔥 FIRE"):
+            st.session_state.last_log = f"Executing strike on {st.session_state.target}"
+    else:
+        st.warning("⚠️ OUT OF SCOPE: ADD TARGET TO GREEN ZONE")
 
 with t2:
     st.subheader("SYSTEM INTEGRITY")
@@ -71,12 +101,12 @@ with t2:
                 ready = find_exe(t) is not None
                 st.write(f"{'✅' if ready else '❌'} {t.upper()}")
 
-with t4:
-    st.subheader("⌨️ MANUAL COMMAND DECK")
-    cmd_input = st.text_input("ENTER COMMAND", "")
-    if st.button("🚀 EXECUTE"):
-        result = subprocess.run(cmd_input, shell=True, capture_output=True, text=True)
-        st.code(f"{result.stdout}\n{result.stderr}")
-
 with t3:
     st.markdown(f'<div class="terminal">{st.session_state.last_log}</div>', unsafe_allow_html=True)
+
+with t4:
+    st.subheader("⌨️ MANUAL COMMAND DECK")
+    cmd = st.text_input("ENTER OVERRIDE", "")
+    if st.button("🚀 EXECUTE"):
+        res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        st.code(f"{res.stdout}\n{res.stderr}")
