@@ -6,3 +6,5 @@ wget
 git
 build-essential
 libpcap-dev
+libfontconfig1
+libxrender1
