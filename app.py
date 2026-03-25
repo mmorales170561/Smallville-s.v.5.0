@@ -8,7 +8,7 @@ import shutil
 import io
 
 # --- 1. HUD CONFIG ---
-st.set_page_config(page_title="SMALLVILLE T2 V9.5", layout="wide")
+st.set_page_config(page_title="SMALLVILLE T2 V9.6", layout="wide")
 st.markdown("<style>.stApp { background-color: #050505; color: #ff3131; font-family: 'Courier New', monospace; } [data-testid='stSidebar'] { background-color: #0a0a0a; border-right: 1px solid #ff3131; } .terminal { background-color: #000; color: #00ff00; padding: 15px; border: 1px solid #333; height: 400px; overflow-y: scroll; white-space: pre-wrap; font-size: 12px; border-left: 5px solid #ff3131; } .stButton>button { background-color: #ff3131 !important; color: #000 !important; font-weight: bold; border-radius: 0px; width: 100%; border: none; } h1, h2, h3 { color: #ff3131 !important; }</style>", unsafe_allow_html=True)
 
 BIN_DIR, LOOT_DIR = "/tmp/ruby_bin", "/tmp/ruby_loot"
@@ -17,7 +17,14 @@ for d in [BIN_DIR, LOOT_DIR]:
 
 if 'term_logs' not in st.session_state: st.session_state.term_logs = "SYSTEM ONLINE..."
 
-# --- 2. THE FORGE ENGINE ---
+# --- 2. ASENAL MAPPING ---
+BATTERIES = {
+    "Web2 (Recon)": ["subfinder", "httpx", "katana", "nuclei"],
+    "Web3 (Chain)": ["aderyn", "arjun"],
+    "AI Agents": ["trufflehog", "sqlmap"]
+}
+
+# --- 3. THE FORGE ENGINE ---
 def forge_arsenal():
     status = st.status("🛠️ FORGING ARSENAL...", expanded=True)
     bins = {
@@ -55,9 +62,11 @@ def forge_arsenal():
         except: status.write(f"❌ {name.upper()} REPO FAIL")
     status.update(label="FORGE COMPLETE", state="complete")
 
-# --- 3. SIDEBAR ---
+# --- 4. SIDEBAR ---
 with st.sidebar:
     st.title("🔴 COMMAND")
+    sel_bat = st.selectbox("🎯 BATTERY", list(BATTERIES.keys()), key='active_bat')
+    st.divider()
     if st.button("🔌 PRIME OMNI-ARSENAL", use_container_width=True): forge_arsenal()
     if st.button("💀 WIPE WORKSPACE", use_container_width=True):
         shutil.rmtree(BIN_DIR, ignore_errors=True); shutil.rmtree(LOOT_DIR, ignore_errors=True)
@@ -67,11 +76,34 @@ with st.sidebar:
     st.text_area("🟢 GREEN ZONE", key='in_scope', value="example.com")
     st.text_area("🔴 RED ZONE", key='out_scope', value=".gov, .mil")
 
-# --- 4. MAIN HUD ---
-st.title("🏹 SMALLVILLE S.V. 9.5")
+# --- 5. MAIN HUD ---
+st.title("🏹 SMALLVILLE S.V. 9.6")
 t1, t2, t3, t4, t5 = st.tabs(["🚀 STRIKE", "📊 MATRIX", "💰 LOOT", "🛠️ TERMINAL", "🔍 DEBUG"])
 
 tgt = st.session_state.get('target_val', '').strip().lower()
+grn = [x.strip().lower() for x in st.session_state.in_scope.split(",") if x.strip()]
+red = [x.strip().lower() for x in st.session_state.out_scope.split(",") if x.strip()]
+auth = any(d in tgt for d in grn) if tgt else False
+deny = any(d in tgt for d in red) if tgt else False
+
+with t1:
+    st.subheader(f"DEPLOY: {sel_bat}")
+    st.text_input("SET TARGET", key="target_val", placeholder="target.com")
+    if not tgt: st.info("Waiting for Target...")
+    elif deny: st.error("🛑 RED ZONE INTERLOCK")
+    elif not auth: st.warning("⚠️ UNAUTHORIZED")
+    else:
+        st.success("✅ AUTHORIZED")
+        if st.button("🔥 INITIATE STRIKE"):
+            st.status(f"Executing {sel_bat} Battery...")
+
+with t2:
+    st.subheader("SYSTEM INTEGRITY")
+    all_names = [t for sub in BATTERIES.values() for t in sub]
+    cols = st.columns(4)
+    for i, name in enumerate(all_names):
+        ready = os.path.exists(os.path.join(BIN_DIR, name))
+        cols[i % 4].write(f"{'✅' if ready else '❌'} {name.upper()}")
 
 with t3:
     st.subheader("📋 COLLECTED INTEL")
@@ -79,37 +111,37 @@ with t3:
     if loot_files:
         col1, col2 = st.columns([3, 1])
         selected_file = col1.selectbox("View Loot", loot_files)
-        
-        # Zip Logic
         buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "x") as csv_zip:
-            for f in loot_files:
-                csv_zip.write(os.path.join(LOOT_DIR, f), f)
-        col2.download_button("📦 ZIP ALL", buf.getvalue(), file_name="smallville_loot.zip", mime="application/zip")
-        
-        with open(os.path.join(LOOT_DIR, selected_file), 'r') as f:
-            st.code(f.read())
+        with zipfile.ZipFile(buf, "x") as l_zip:
+            for f in loot_files: l_zip.write(os.path.join(LOOT_DIR, f), f)
+        col2.download_button("📦 ZIP ALL", buf.getvalue(), file_name="loot.zip", mime="application/zip")
+        with open(os.path.join(LOOT_DIR, selected_file), 'r') as f: st.code(f.read())
     else: st.info("No loot found.")
 
 with t4:
     st.subheader("⌨️ TERMINAL & QUICK-START")
-    # Quick Commands
-    q1, q2, q3 = st.columns(3)
-    if q1.button("🔍 PASSIVE RECON (SUBFINDER)"): st.session_state.c_input = f"subfinder -d {tgt} -o {LOOT_DIR}/subs.txt"
-    if q2.button("🧪 VULN SCAN (NUCLEI)"): st.session_state.c_input = f"nuclei -u {tgt} -o {LOOT_DIR}/vulns.txt"
-    if q3.button("💉 SQL INJECTION (SQLMAP)"): st.session_state.c_input = f"sqlmap -u {tgt} --batch --banner"
+    q1, q2, q3, q4 = st.columns(4)
+    if q1.button("🔍 PASSIVE"): st.session_state.c_input = f"subfinder -d {tgt} -o {LOOT_DIR}/subs.txt"
+    if q2.button("🧪 VULN"): st.session_state.c_input = f"nuclei -u {tgt} -o {LOOT_DIR}/vulns.txt"
+    if q3.button("💉 SQLi"): st.session_state.c_input = f"sqlmap -u {tgt} --batch --banner"
+    if q4.button("🔗 WEB3"): st.session_state.c_input = f"aderyn {tgt}"
 
     st.markdown(f'<div class="terminal">{st.session_state.term_logs}</div>', unsafe_allow_html=True)
     c_in = st.text_input("CMD >", key="c_input")
     if st.button("🚀 EXECUTE"):
         cmd = c_in
-        # Path Resolution Logic
         if "subfinder" in c_in and not c_in.startswith("/tmp"): cmd = c_in.replace("subfinder", f"{BIN_DIR}/subfinder")
         if "sqlmap" in c_in and not c_in.startswith("python3"): cmd = f"python3 {BIN_DIR}/sqlmap/sqlmap.py " + c_in.replace("sqlmap", "")
         if "arjun" in c_in: cmd = f"python3 {BIN_DIR}/arjun/arjun.py " + c_in.replace("arjun", "")
+        if "aderyn" in c_in and not c_in.startswith("/tmp"): cmd = c_in.replace("aderyn", f"{BIN_DIR}/aderyn")
         
         res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         st.session_state.term_logs += f"\n$ {cmd}\n{res.stdout}{res.stderr}"
         st.rerun()
 
-# (Other tabs logic from v9.4 remains)
+with t5:
+    st.subheader("🔍 DEBUG")
+    st.write(f"Bin: `{BIN_DIR}` | Loot: `{LOOT_DIR}`")
+    if st.button("🔎 DEEP SCAN"):
+        files = [os.path.join(r, f) for r, d, f in os.walk(BIN_DIR) for f in f]
+        st.code("\n".join(files) if files else "Empty")
