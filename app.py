@@ -83,37 +83,53 @@ with s_tab:
     target = st.text_input("🎯 TARGET", "example.com")
     if st.button("🔥 INITIATE FULL AUTO-STRIKE"):
         final_output = []
+        # Clear previous logs for a fresh strike
+        st.session_state.last_log = "--- INITIALIZING STRIKE SEQUENCE ---\n"
+        
         with st.status("⛓️ Chain Executing...", expanded=True) as s:
-            
-            # STEP 1: SUBFINDER
-            s.write("📡 Locating Subfinder...")
+            # --- STEP 1: SUBFINDER ---
             sub_path = find_executable("subfinder")
             if sub_path:
                 s.write("📡 Firing Subfinder...")
-                sub_res = subprocess.run([sub_path, "-d", target, "-silent"], capture_output=True, text=True)
-                final_output.append(f"--- SUBDOMAINS ---\n{sub_res.stdout if sub_res.stdout else '[!] No Subdomains Found'}")
-            else: final_output.append("❌ Subfinder Binary Missing.")
-
-            # STEP 2: HTTPX
-            s.write("🔍 Locating Httpx...")
+                try:
+                    # Added timeout to prevent hanging
+                    sub_res = subprocess.run([sub_path, "-d", target, "-silent"], 
+                                           capture_output=True, text=True, timeout=60)
+                    out = sub_res.stdout if sub_res.stdout else "[!] No Subdomains Found"
+                    final_output.append(f"--- SUBDOMAINS ---\n{out}")
+                    st.session_state.last_log += f"\n[GHOST] Recon Complete on {target}"
+                except subprocess.TimeoutExpired:
+                    final_output.append("--- SUBDOMAINS ---\n❌ Subfinder Timed Out.")
+            
+            # --- STEP 2: HTTPX ---
             htx_path = find_executable("httpx")
             if htx_path:
                 s.write("🔍 Firing Httpx...")
-                # Pipe subdomains into httpx if any were found
-                input_data = sub_res.stdout if (sub_path and sub_res.stdout) else target
-                htx_res = subprocess.run(f"echo '{input_data}' | {htx_path} -silent -sc -td", shell=True, capture_output=True, text=True)
-                final_output.append(f"--- HTTP PROBE ---\n{htx_res.stdout if htx_res.stdout else '[!] No Active Hosts'}")
-            else: final_output.append("❌ Httpx Binary Missing.")
+                # Use subdomains if found, otherwise use root target
+                input_data = sub_res.stdout if (sub_path and sub_res.stdout.strip()) else target
+                try:
+                    # Added shell execution with input pipe
+                    htx_res = subprocess.run(f"echo '{input_data}' | {htx_path} -silent -sc -td", 
+                                           shell=True, capture_output=True, text=True, timeout=60)
+                    out = htx_res.stdout if htx_res.stdout else "[!] No Active Hosts"
+                    final_output.append(f"--- HTTP PROBE ---\n{out}")
+                except Exception as e:
+                    final_output.append(f"--- HTTP PROBE ---\n❌ Httpx Error: {str(e)}")
 
-            # STEP 3: NUCLEI
-            s.write("☢️ Locating Nuclei...")
+            # --- STEP 3: NUCLEI ---
             nuc_path = find_executable("nuclei")
             if nuc_path:
                 s.write("☢️ Firing Nuclei...")
-                nuc_res = subprocess.run([nuc_path, "-u", target, "-silent", "-severity", "critical,high"], capture_output=True, text=True)
-                final_output.append(f"--- NUCLEI VULNS ---\n{nuc_res.stdout if nuc_res.stdout else '[!] No Vulnerabilities Detected'}")
-            else: final_output.append("❌ Nuclei Binary Missing.")
+                try:
+                    # Running with -ni (no interact) and -rl (rate limit) for Streamlit stability
+                    nuc_res = subprocess.run([nuc_path, "-u", target, "-silent", "-ni", "-rl", "10", "-severity", "critical,high"], 
+                                           capture_output=True, text=True, timeout=120)
+                    out = nuc_res.stdout if nuc_res.stdout else "[!] No Vulnerabilities Detected"
+                    final_output.append(f"--- NUCLEI VULNS ---\n{out}")
+                except Exception as e:
+                    final_output.append(f"--- NUCLEI VULNS ---\n❌ Nuclei Error: {str(e)}")
 
+            # --- FINAL UPDATE ---
             st.session_state.last_log = "\n\n".join(final_output)
             s.update(label="Strike Sequence Complete.", state="complete")
 
