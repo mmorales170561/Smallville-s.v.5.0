@@ -5,3 +5,4 @@ curl
 wget
 git
 build-essential
+libpcap-dev
