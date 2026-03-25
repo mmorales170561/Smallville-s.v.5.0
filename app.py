@@ -13,11 +13,10 @@ st.markdown("""
     <style>
     .stApp { background-color: #000; color: #ff3131; font-family: 'Courier New', monospace; }
     [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 2px solid #ff3131; }
-    .stButton>button { background-color: #ff3131; color: #000; border: none; font-weight: bold; border-radius: 0px; width: 100%; }
+    .stButton>button { background-color: #ff3131; color: #000; border: none; font-weight: bold; border-radius: 0px; }
     .stTextInput>div>div>input { background-color: #111; color: #ff3131; border: 1px solid #444; }
-    .stTabs [data-baseweb="tab-list"] { background-color: #000; gap: 10px; }
-    .stTabs [aria-selected="true"] { border-bottom: 2px solid #ff3131 !important; color: #ff3131 !important; }
-    code { color: #00ff00 !important; }
+    code { color: #00ff00 !important; background-color: #111 !important; }
+    .terminal { background-color: #050505; color: #00ff00; padding: 10px; border: 1px solid #333; font-family: monospace; height: 200px; overflow-y: scroll; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -27,54 +26,51 @@ if not os.path.exists(BIN_DIR):
     os.makedirs(BIN_DIR)
 
 def fabricate_tool(tool_name, url, is_zip=False):
-    """Hardened downloader to bypass 404s and corrupted zips."""
+    """Downloads and extracts binaries with stability checks."""
     path = os.path.join(BIN_DIR, tool_name)
-    if not os.path.exists(path):
-        try:
-            with st.spinner(f"🧬 Fabricating {tool_name}..."):
-                # Use a browser-like User-Agent to prevent bot-blocking 403/404s
-                headers = {'User-Agent': 'Mozilla/5.0'}
-                r = requests.get(url, headers=headers, stream=True, timeout=20)
-                
-                if r.status_code != 200:
-                    st.error(f"❌ Misfire: {tool_name} returned {r.status_code}. Check link.")
-                    return
+    try:
+        with st.spinner(f"🧬 Fabricating {tool_name}..."):
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            r = requests.get(url, headers=headers, stream=True, timeout=20)
+            if r.status_code != 200:
+                st.error(f"❌ 404/Error: {tool_name} failed. Check link.")
+                return
 
-                local_file = f"/tmp/{tool_name}_pkg"
-                with open(local_file, 'wb') as f:
-                    f.write(r.content)
-                
-                if is_zip:
-                    with zipfile.ZipFile(local_file, 'r') as z:
-                        z.extractall(BIN_DIR)
-                else:
-                    with tarfile.open(local_file, "r:gz") as t:
-                        t.extractall(path=BIN_DIR)
-                
-                # Standardize binary location: find the file and move it to BIN_DIR root
-                for root, dirs, files in os.walk(BIN_DIR):
-                    for f in files:
-                        if f == tool_name or f.startswith(tool_name):
-                            full_p = os.path.join(root, f)
-                            os.chmod(full_p, 0o755)
-                            # Link to main bin path for easy calling
-                            if full_p != path:
-                                shutil.copy2(full_p, path)
-                
-                st.success(f"🔋 {tool_name} Online.")
-        except Exception as e:
-            st.error(f"⚠️ Fabrication Error: {str(e)}")
+            pkg = f"/tmp/{tool_name}_pkg"
+            with open(pkg, 'wb') as f:
+                f.write(r.content)
+            
+            if is_zip:
+                with zipfile.ZipFile(pkg, 'r') as z:
+                    z.extractall(BIN_DIR)
+            else:
+                with tarfile.open(pkg, "r:gz") as t:
+                    t.extractall(path=BIN_DIR)
+            
+            # Find binary and set permissions
+            for root, dirs, files in os.walk(BIN_DIR):
+                for f in files:
+                    if f == tool_name or (f.startswith(tool_name) and "." not in f):
+                        os.chmod(os.path.join(root, f), 0o755)
+            st.success(f"🔋 {tool_name} Online.")
+    except Exception as e:
+        st.error(f"⚠️ Fabrication Error: {str(e)}")
 
 # --- 3. SIDEBAR: OPERATOR CONSOLE ---
 with st.sidebar:
     st.title("🔴 RUBY-OPERATOR")
-    st.caption("v2.6 Cloud-Native Offensive Framework")
-    
-    battery = st.selectbox("TACTICAL BATTERY", ["Ghost (Recon)", "DeFi (Web3)", "Modern (AI/ID)"])
+    battery = st.selectbox("TACTICAL BATTERY", ["Ghost (Recon)", "DeFi (Web3)"])
     
     if st.button("🔌 PRIME ARMORY"):
         if battery == "Ghost (Recon)":
-            # Updated Stable 2026 Links
             fabricate_tool("subfinder", "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip", is_zip=True)
             fabricate_tool("httpx", "https://github.com/projectdiscovery/httpx/releases/download/v1.6.0/httpx_1.6.0_linux_amd64.zip", is_zip=True)
         elif battery == "DeFi (Web3)":
+            fabricate_tool("aderyn", "https://github.com/Cyfrin/aderyn/releases/latest/download/aderyn-x86_64-unknown-linux-gnu.tar.gz")
+            
+    st.divider()
+    if st.button("🔍 DIAGNOSTICS"):
+        st.write("Current Armory Path: `/tmp/ruby_bin`")
+        st.write(os.listdir(BIN_DIR) if os.path.exists(BIN_DIR) else "Empty")
+            
+    if st
