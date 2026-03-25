@@ -100,4 +100,4 @@ st.title("🏹 SMALLVILLE S.V. 5.7")
 
 with st.sidebar:
     st.title("🔴 COMMAND")
-    st.session_state.battery_type = st.radio("ENVIRONMENT", ["Web2", "Web3", "
+    st.session_state.battery_type = st.radio("ENVIRONMENT", ["Web2", "Web3", "AI Agent"])
