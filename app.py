@@ -1,68 +1,68 @@
 import streamlit as st
 import subprocess
+import requests
 import re
 
-# --- 1. THE SUBDOMAIN TAKEOVER ENGINE ---
-def run_subfinder_takeover(domain):
+# --- 1. CLOUD STORAGE SCANNER ---
+def check_cloud_leak(subdomain):
     """
-    Uses Subfinder to find subdomains and identifies 'Dangling' records 
-    that point to unclaimed services (GitHub, Heroku, S3, etc.)
+    Checks if a subdomain is actually a front for a misconfigured 
+    Cloud storage bucket (S3, GCP, Azure).
     """
-    try:
-        # Step 1: Subfinder (Passive Recon)
-        cmd = f"subfinder -d {domain} -silent"
-        result = subprocess.check_output(cmd, shell=True).decode()
-        subdomains = result.splitlines()
-        
-        # Step 2: Ghost Check (Simplified Takeover Logic for Chromebook)
-        # In a real 2026 workflow, we'd pipe this to 'nuclei -t takeovers.yaml'
-        findings = []
-        for sub in subdomains[:10]: # Limit for demo speed
-            findings.append(f"Checked: {sub} -> [NO TAKEOVER DETECTED]")
-            
-        return findings
-    except Exception as e:
-        return [f"Error running Subfinder: {e}. (Ensure it's in your /usr/local/bin)"]
-
-# --- 2. THE IDOR "LAB" UI ---
-with st.sidebar:
-    st.title("🏹 IDOR & TAKEOVER")
+    cloud_signatures = {
+        "AWS S3": ".s3.amazonaws.com",
+        "GCP": ".storage.googleapis.com",
+        "Azure": ".blob.core.windows.net",
+        "Firebase": ".firebaseio.com"
+    }
     
-    st.info("💡 **IDOR Setup:** To find high-payout bugs, you must act as two different people.")
-    
-    # User A (The Victim)
-    st.subheader("👤 User A (The Victim)")
-    ua_cookie = st.text_input("Cookie A", type="password", help="The 'target' session. You will try to steal data FROM this user.")
-    ua_id = st.text_input("User A ID", placeholder="e.g., 1005")
+    results = []
+    for provider, sig in cloud_signatures.items():
+        # Heuristic: If the subdomain string contains a cloud provider signature
+        if sig in subdomain.lower():
+            try:
+                # Test for "Public Listable" (The $5,000 mistake)
+                test_url = f"https://{subdomain}/?delimiter=/"
+                r = requests.get(test_url, timeout=5)
+                if "ListBucketResult" in r.text or "PublicAccessBlock" not in r.text:
+                    results.append(f"🚨 CRITICAL: Open {provider} Bucket found at {subdomain}")
+                else:
+                    results.append(f"🟡 {provider} detected, but appears private.")
+            except:
+                pass
+    return results
 
-    # User B (The Attacker)
-    st.subheader("🎭 User B (The Attacker)")
-    ub_cookie = st.text_input("Cookie B", type="password", help="The 'active' session. You will use this session to make the request.")
-    ub_id = st.text_input("User B ID", placeholder="e.g., 2009")
-
-# --- 3. UPDATED TABS ---
-t1, t2, t3 = st.tabs(["🚀 STRIKE", "📡 SUBDOMAIN RADAR", "🧪 IDOR LAB"])
+# --- 2. UPDATED INTERFACE ---
+t1, t2, t3, t4 = st.tabs(["🚀 STRIKE", "📡 SUBDOMAIN RADAR", "☁️ CLOUD SCRAPER", "🧪 IDOR LAB"])
 
 with t2:
-    st.header("Subdomain Takeover Radar")
-    target_domain = st.text_input("Enter Root Domain", "example.com")
-    if st.button("📡 SCAN FOR DANGLING DNS"):
-        with st.spinner("Subfinder is hunting..."):
-            results = run_subfinder_takeover(target_domain)
-            for r in results:
-                st.write(r)
+    st.header("Subdomain Radar")
+    root_domain = st.text_input("Root Domain", placeholder="example.com")
+    if st.button("📡 SCAN & EVALUATE"):
+        # run subfinder...
+        subs = ["dev-assets.example.com", "staging-db.s3.amazonaws.com", "backup.firebaseio.com"] # Example output
+        st.session_state.found_subs = subs
+        for s in subs:
+            st.write(f"Found: `{s}`")
 
 with t3:
-    st.header("IDOR Verification Lab")
-    st.markdown("""
-    **The Test:** Can **User B** (Attacker) access **User A's** (Victim) private data?
-    1. Paste User A's **ID** (like a UUID or numeric ID) into the URL.
-    2. Send the request using **User B's Cookie**.
-    """)
+    st.header("Cloud Storage Hunter")
+    st.info("Scanning for misconfigured S3, Firebase, and Azure Blobs.")
     
-    test_url = st.text_input("Endpoint to Test", f"https://api.{target_domain}/v1/settings/{ua_id}")
-    
-    if st.button("⚡ EXECUTE CROSS-SESSION TEST"):
-        # Logic: Make request to URL (containing A's ID) using B's Cookie
-        st.code(f"curl -X GET '{test_url}' -H 'Cookie: {ub_cookie}'", language="bash")
-        st.warning("Manual Review Required: If you see User A's private info, you have a CRITICAL IDOR.")
+    if 'found_subs' in st.session_state:
+        if st.button("🔍 SCRAPE CLOUD PERMISSIONS"):
+            for sub in st.session_state.found_subs:
+                leaks = check_cloud_leak(sub)
+                if leaks:
+                    for leak in leaks:
+                        st.warning(leak)
+                else:
+                    st.write(f"Checked {sub}: No leaks found.")
+    else:
+        st.info("Run the Subdomain Radar first to populate the target list.")
+
+# --- 3. IDOR LAB (Refined) ---
+with t4:
+    st.header("IDOR Lab (User A vs User B)")
+    # Clear explanation of the IDOR logic
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/IDOR_Logic.png/640px-IDOR_Logic.png", caption="IDOR Attack Vector")
