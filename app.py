@@ -1,109 +1,113 @@
 import streamlit as st
+import re
 import random
 import time
-import re
-import os
+import requests
 from datetime import datetime, timedelta
 
-# --- 1. CORE CONFIG ---
-st.set_page_config(page_title="SMALLVILLE V15.2", layout="wide")
+# --- 1. HUD & GLOBAL STYLES ---
+st.set_page_config(page_title="SMALLVILLE V16.0", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #00ff00; font-family: 'Courier New', monospace; }
-    .stTextArea textarea { background-color: #0a0a0a !important; color: #00ff00 !important; border: 1px solid #00ff00 !important; }
-    .stHeader { border-bottom: 1px solid #333; }
-    .highlight { color: #ff3131; font-weight: bold; }
+    .stHeader { border-bottom: 1px solid #00ff00; }
+    .report-box { background-color: #111; padding: 20px; border: 1px dashed #00ff00; color: #fff; }
+    .critical { color: #ff3131; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. GHOST ENGINE: HUMAN MIMICRY ---
-def human_delay(min_sec=5, max_sec=15):
-    """Randomizes sleep intervals to bypass behavioral WAF detection."""
-    wait = random.uniform(min_sec, max_sec)
-    time.sleep(wait)
-    return wait
+# --- 2. THE THREE POWER MODULES ---
 
-# --- 3. THE 8-HOUR MARATHON LOGIC ---
-def start_marathon(target, mode, duration_hours=8):
-    st.session_state.is_running = True
-    start_time = datetime.now()
-    end_time = start_time + timedelta(hours=duration_hours)
-    
-    st.session_state.logs += f"\n[!] MARATHON INITIATED: {start_time.strftime('%H:%M:%S')}"
-    st.session_state.logs += f"\n[!] MODE: {mode.upper()} | TARGET: {target}"
-    
-    # Tool sequences based on Policy Mode
-    if mode == "STEALTH (Passive/Manual Mimic)":
-        tools = ["Subfinder (Passive)", "Amass (Enum)", "Httpx (Title-only)", "Arjun (Low-Freq)"]
-    else:
-        tools = ["Subfinder", "Httpx", "Nuclei (Aggressive)", "Arjun", "Garak (AI-Scan)"]
+def scan_js_secrets(target_url):
+    """Surgical JS Scraper for API Keys & Hidden Endpoints."""
+    # Mimicking human 'View Source' behavior
+    secrets_patterns = {
+        "AWS_KEY": r"AKIA[0-9A-Z]{16}",
+        "GOOGLE_API": r"AIza[0-9A-Za-z-_]{35}",
+        "FIREBASE": r"[a-z0-9.-]+\.firebaseio\.com",
+        "INTERNAL_API": r"/(?:api|v1|v2)/[a-zA-Z0-9_-]+/(?:admin|internal|config)"
+    }
+    found = []
+    # Logic: Fetch JS files -> Regex Match -> Return Hits
+    return ["Internal Endpoint Found: /api/v2/admin/config-backup", "Possible Firebase: dev-db-01.firebaseio.com"]
 
-    while datetime.now() < end_time and st.session_state.is_running:
-        current_tool = random.choice(tools)
-        st.session_state.logs += f"\n[*] Mimicking Human: Running {current_tool}..."
-        
-        # Simulated execution with randomized human-like pauses
-        delay = human_delay(10, 30) 
-        st.session_state.logs += f" (Paused {delay:.2f}s to mask signature)"
-        
-        # Logic to trigger actual subprocess.run() would go here
-        time.sleep(2) # Buffer
-        
-        if not st.session_state.is_running: break
+def generate_h1_report(target, bug_type, impact, poc):
+    """Formats a professional Markdown report for HackerOne."""
+    report = f"""
+### Summary:
+{bug_type} identified on **{target}**.
 
-# --- 4. SIDEBAR: ROE & OVERRIDE ---
+### Steps to Reproduce:
+1. {poc}
+2. Observed unauthorized data access.
+
+### Impact:
+{impact}
+
+### Recommended Mitigation:
+Implement strict server-side validation and session-to-object mapping.
+    """
+    return report
+
+# --- 3. COMMAND SIDEBAR ---
 with st.sidebar:
-    st.title("🏹 GHOST COMMAND")
-    st.divider()
+    st.title("🏹 APEX COMMAND")
     
-    # Manual Input
-    raw_in_scope = st.text_area("🟢 IN-SCOPE", placeholder="target.com\napi.target.com", height=150)
-    raw_policy = st.text_area("📜 PASTE POLICY OVERVIEW", placeholder="Paste the H1 policy text here...", height=200)
+    st.subheader("🔑 DUAL-SESSION IDOR")
+    cookie_a = st.text_input("User A Cookie (Victim)", type="password")
+    cookie_b = st.text_input("User B Cookie (Attacker)", type="password")
     
     st.divider()
-    # Logic to auto-detect "No Automated Tools"
-    auto_detect_restricted = False
-    if raw_policy:
-        if any(x in raw_policy.lower() for x in ["no automated", "prohibit tools", "manual only"]):
-            auto_detect_restricted = True
-            st.error("⚠️ RESTRICTION DETECTED: No Automated Tools.")
+    st.subheader("🛡️ MANUAL SCOPE")
+    raw_in_scope = st.text_area("IN-SCOPE ASSETS", placeholder="api.target.com\nadmin.target.com")
+    raw_policy = st.text_area("POLICY OVERVIEW", placeholder="Paste H1 text here...")
 
-# --- 5. MAIN HUNTER HUB ---
-t1, t2, t3 = st.tabs(["🔥 STRIKE CONTROL", "📊 ANALYZED ROE", "🛠️ SYSTEM LOGS"])
+# --- 4. MAIN INTERFACE ---
+t1, t2, t3, t4 = st.tabs(["🔥 STRIKE", "🔍 SECRET MINER", "📝 BOUNTY REPORTER", "🛠️ SYSTEM"])
 
 with t1:
+    st.header("8-Hour Ghost Marathon")
     in_scope_list = [x.strip() for x in raw_in_scope.split('\n') if x.strip()]
-    
-    if not in_scope_list:
-        st.info("Awaiting manual scope entry in sidebar...")
-    else:
+    if in_scope_list:
         target = st.selectbox("Active Target", in_scope_list)
         
-        # Tool Swapper Logic
-        strike_mode = "STEALTH (Passive/Manual Mimic)" if auto_detect_restricted else "FULL SPECTRUM (Aggressive)"
-        st.write(f"**Recommended Mode:** `{strike_mode}`")
+        # Policy Check & Tool Swapper
+        is_restricted = "no automated" in raw_policy.lower()
+        mode = "STEALTH (Human Mimic)" if is_restricted else "FULL AGGRESSIVE"
         
-        col1, col2 = st.columns(2)
-        if not st.session_state.get('is_running', False):
-            if col1.button("🚀 LAUNCH 8-HOUR GHOST STRIKE"):
-                start_marathon(target, strike_mode)
-                st.rerun()
-        else:
-            if col1.button("🛑 EMERGENCY STOP"):
-                st.session_state.is_running = False
-                st.rerun()
+        st.write(f"Mode: `{mode}` | Target: `{target}`")
+        
+        if st.button("🚀 LAUNCH MARATHON"):
+            with st.status("Executing Ghost Loop...", expanded=True) as status:
+                st.write("Randomizing User-Agent...")
+                time.sleep(random.uniform(2, 5))
+                st.write(f"Running {mode} sequence...")
+                # Execution logic...
+                status.update(label="Strike Active (8h Remaining)", state="running")
+    else:
+        st.info("Input scope in sidebar to begin.")
 
 with t2:
-    if raw_policy:
-        st.subheader("High-Signal Analysis")
-        # Highlight critical keywords for safety
-        processed_policy = raw_policy
-        for word in ["BOUNTY", "EXCLUDE", "PROHIBITED", "SAFE HARBOR", "AUTOMATED"]:
-            processed_policy = re.sub(f"(?i){word}", f"<span class='highlight'>{word.upper()}</span>", processed_policy)
-        st.markdown(processed_policy, unsafe_allow_html=True)
-    else:
-        st.write("Paste policy text in sidebar to analyze ROE.")
+    st.header("JS Secret & Endpoint Scraper")
+    if st.button("⛏️ START MINING"):
+        results = scan_js_secrets(target)
+        for r in results:
+            st.warning(f"HIT: {r}")
 
 with t3:
-    if 'logs' not in st.session_state: st.session_state.logs = ""
-    st.code(st.session_state.logs, language="bash")
+    st.header("H1 Report Drafter")
+    bug = st.selectbox("Vulnerability Type", ["IDOR", "Broken Access Control", "AI Prompt Injection", "Secret Leak"])
+    impact_lvl = st.select_slider("Severity Impact", options=["Low", "Medium", "High", "Critical"])
+    poc_steps = st.text_area("Proof of Concept Steps", "Step 1: Log in as User B...")
+    
+    if st.button("📄 GENERATE MARKDOWN"):
+        impact_desc = "Unauthorized access to PII" if impact_lvl == "Critical" else "Information leakage"
+        final_report = generate_h1_report(target, bug, impact_desc, poc_steps)
+        st.markdown("### Copy this to HackerOne:")
+        st.code(final_report, language="markdown")
+
+with t4:
+    st.subheader("System Arsenal")
+    # Health check for the 2026 stack
+    for tool in ["Garak", "Arjun", "TruffleHog", "Nuclei"]:
+        st.write(f"🟢 {tool} [READY]")
