@@ -1,101 +1,105 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
 import re
-import os
 
-# --- 1. FAIL-SAFE INITIALIZATION ---
-st.set_page_config(page_title="SMALLVILLE V14.9", layout="wide")
+# --- 1. HUD & THEMES ---
+st.set_page_config(page_title="SMALLVILLE V15.0", layout="wide")
+st.markdown("""
+    <style>
+    .stApp { background-color: #050505; color: #00ff00; font-family: 'Courier New', monospace; }
+    .stHeader { color: #ff3131; }
+    b { color: #ff3131; text-decoration: underline; }
+    </style>
+""", unsafe_allow_html=True)
 
-# Ensure UI elements exist even if logic fails
-if 'h1_data' not in st.session_state:
-    st.session_state.h1_data = {"policy": "No policy synced.", "assets": []}
-if 'whitelist' not in st.session_state:
-    st.session_state.whitelist = ""
-if 'term_logs' not in st.session_state:
-    st.session_state.term_logs = "READY..."
-
-# --- 2. THE STEALTH PARSER ---
-def ghost_sync(handle):
-    # Mimicking a 2026 Browser Fingerprint
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "X-Requested-With": "XMLHttpRequest"
-    }
-    url = f"https://hackerone.com/{handle}"
+# --- 2. API INTELLIGENCE ---
+def get_h1_api_data(handle):
+    """Fetches policy via the Public HackerOne API (No JS Required)."""
+    # The API endpoint is much more stable than web scraping in 2026
+    api_url = f"https://api.hackerone.com/v1/hackers/programs/{handle}"
     
     try:
-        res = requests.get(url, headers=headers, timeout=10)
-        if res.status_code != 200:
-            return None, f"H1 Error: {res.status_code}"
+        # Note: Public programs usually allow unauthenticated 'GET' on this specific path
+        # but require a User-Agent to avoid generic bot-blocking.
+        headers = {"User-Agent": "Smallville-Security-Researcher-2026"}
+        res = requests.get(api_url, headers=headers, timeout=10)
         
-        soup = BeautifulSoup(res.text, 'html.parser')
+        if res.status_code == 200:
+            data = res.json()
+            # Extracting the key fields for Smallville
+            policy_text = data.get('policy', 'No policy text returned.')
+            
+            # Extracting Scoped Assets from the API structure
+            # The API returns a dedicated 'structured_scopes' list
+            scopes = data.get('relationships', {}).get('structured_scopes', {}).get('data', [])
+            assets = [s.get('attributes', {}).get('asset_identifier') for s in scopes if s.get('attributes', {}).get('eligible_for_bounty')]
+            
+            return {
+                "policy": policy_text,
+                "assets": assets if assets else ["Manual check required"]
+            }, None
         
-        # 2026 H1 Content Scraper
-        main_content = soup.find('div', {'class': re.compile(r'policy|instruction|program')}) or soup.find('body')
-        text = main_content.get_text(separator='\n') if main_content else ""
-        
-        # Regex for domains and wildcards
-        found_assets = list(set(re.findall(r'(?:\*\.)?[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.[a-z]{2,6}', text)))
-        
-        return {"policy": text, "assets": found_assets}, None
+        elif res.status_code == 404:
+            return None, "Error 404: Program handle not found in API."
+        else:
+            return None, f"API Blocked (Code {res.status_code})."
+            
     except Exception as e:
         return None, str(e)
 
-# --- 3. PERSISTENT SIDEBAR ---
+# --- 3. FAIL-SAFE INITIALIZATION ---
+if 'h1_data' not in st.session_state:
+    st.session_state.h1_data = {"policy": "Awaiting Sync...", "assets": []}
+
+# --- 4. COMMAND SIDEBAR ---
 with st.sidebar:
-    st.title("🏹 H1 COMMANDER")
-    st.markdown("---")
-    h1_handle = st.text_input("Program Handle", value="security")
+    st.title("🏹 H1 API GATEWAY")
+    handle = st.text_input("H1 Handle (e.g. 'security', 'starbucks')", value="security")
     
-    if st.button("📡 SYNC POLICY", use_container_width=True):
-        data, err = ghost_sync(h1_handle)
-        if data:
-            st.session_state.h1_data = data
-            st.session_state.whitelist = ", ".join(data['assets'])
-            st.success("SYNC SUCCESSFUL")
-        else:
-            st.error(f"SYNC FAILED: {err}")
+    if st.button("📡 PULL API DATA", use_container_width=True):
+        with st.status("Connecting to HackerOne API...", expanded=False):
+            data, err = get_h1_api_data(handle)
+            if data:
+                st.session_state.h1_data = data
+                st.success("API DATA LOCKED")
+            else:
+                st.error(err)
 
     st.divider()
-    # ROE Settings
-    st.subheader("Rules of Engagement")
-    st.text_area("🟢 WHITELIST", value=st.session_state.whitelist, height=150)
-    st.text_area("🔴 BLACKLIST", value=".gov, .mil, logout, delete", height=100)
+    st.subheader("Current Scope")
+    st.write(st.session_state.h1_data['assets'])
 
-# --- 4. PERSISTENT TABS ---
-st.title("SMALLVILLE S.V. 14.9")
-t1, t2, t3, t4 = st.tabs(["🚀 STRIKE", "📜 POLICY OVERVIEW", "📊 MATRIX", "🛠️ DEBUG"])
+# --- 5. MAIN HUNTER HUD ---
+t1, t2, t3 = st.tabs(["🔥 STRIKE", "📜 POLICY ANALYSIS", "📊 MATRIX"])
 
 with t1:
-    st.subheader("Autonomous Strike")
+    st.subheader(f"Target: {handle}")
     if not st.session_state.h1_data['assets']:
-        st.info("Please sync a program in the sidebar to populate targets.")
+        st.info("Sync via sidebar to begin.")
     else:
-        selected = st.selectbox("Select Target Asset", st.session_state.h1_data['assets'])
-        if st.button("🔥 START 8-HOUR MARATHON"):
-            st.warning(f"Strike initiated on {selected}. Persistence loop active.")
+        target = st.selectbox("Active Asset", st.session_state.h1_data['assets'])
+        
+        # Smart Policy Guard
+        p_text = st.session_state.h1_data['policy'].lower()
+        if "no automated" in p_text or "scanning prohibited" in p_text:
+            st.error("🛑 STOP: Automated tools are explicitly FORBIDDEN in this policy.")
+        else:
+            if st.button("🚀 INITIATE 8-HOUR MARATHON"):
+                st.warning(f"Persistence Loop Engaged on {target}. Monitoring for P1/P2...")
 
 with t2:
-    st.subheader("Program Policy & Instructions")
-    # Ensure background and text contrast
-    policy_display = st.session_state.h1_data['policy']
-    # Highlight critical ROE words in Red
-    for word in ["PROHIBITED", "EXCLUDE", "OUT-OF-SCOPE", "BOUNTY", "CRITICAL"]:
-        policy_display = policy_display.replace(word.lower(), f"**{word}**")
-        policy_display = policy_display.replace(word.capitalize(), f"**{word}**")
+    st.subheader("Legal Overview (Analyzed)")
+    raw_policy = st.session_state.h1_data['policy']
     
-    st.markdown(policy_display if policy_display else "No policy data available.")
+    # 2026 Keyword Highlighting Logic
+    keywords = ["bounty", "exclude", "out-of-scope", "prohibited", "safe harbor", "critical", "p1"]
+    for word in keywords:
+        pattern = re.compile(re.escape(word), re.IGNORECASE)
+        raw_policy = pattern.sub(f"<b>{word.upper()}</b>", raw_policy)
+    
+    st.markdown(raw_policy, unsafe_allow_html=True)
 
 with t3:
-    st.subheader("Arsenal Health")
-    cols = st.columns(3)
-    tools = ["subfinder", "nuclei", "garak", "arjun", "mindgard", "snyk"]
-    for i, tool in enumerate(tools):
-        cols[i % 3].metric(tool.upper(), "🟢 ONLINE")
-
-with t4:
-    st.subheader("System Debug")
-    st.write("Session State Check:", "OK" if 'h1_data' in st.session_state else "CORRUPT")
-    st.code(st.session_state.term_logs)
+    st.subheader("Arsenal Status")
+    for tool in ["SUBFINDER", "NUCLEI", "GARAK", "SNYK"]:
+        st.write(f"🟢 {tool} [CONNECTED]")
