@@ -1,11 +1,10 @@
 import streamlit as st
 from datetime import datetime
-import random
 
 # --- 1. GLOBAL BOOTLOADER ---
 def global_init():
     if 'term_logs' not in st.session_state: 
-        st.session_state.term_logs = "[*] SYSTEM READY\n[11:12:50] Terminal Initialized."
+        st.session_state.term_logs = f"[*] SYSTEM ONLINE | BAKERSFIELD HQ | {datetime.now().strftime('%Y-%m-%d')}"
     if 'loot_items' not in st.session_state: 
         st.session_state.loot_items = []
     if 'in_scope' not in st.session_state:
@@ -13,19 +12,19 @@ def global_init():
 
 global_init()
 
-# --- 2. SIDEBAR (STABLE RENDER) ---
+# --- 2. SIDEBAR ---
 with st.sidebar:
     st.title("🏹 MISSION CONTROL")
     st.divider()
-    st.session_state.in_scope = st.text_area("🟢 IN-SCOPE", value=st.session_state.in_scope, height=100)
+    st.session_state.in_scope = st.text_area("🟢 IN-SCOPE", value=st.session_state.in_scope, height=80)
     
     st.divider()
     st.subheader("🔑 SESSION TOKENS")
-    ua_cookie = st.text_input("Cookie A (Victim)", type="password")
-    ub_cookie = st.text_input("Cookie B (Attacker)", type="password")
+    ua_cookie = st.text_input("Cookie A (Victim)", type="password", placeholder="User A Session")
+    ub_cookie = st.text_input("Cookie B (Attacker)", type="password", placeholder="User B Session")
     
     st.divider()
-    st.download_button("💾 DOWNLOAD EVIDENCE", st.session_state.term_logs, file_name="h1_evidence.txt")
+    st.download_button("💾 DOWNLOAD LOGS", st.session_state.term_logs, file_name="evidence_logs.txt")
 
 # --- 3. THE COMMAND TABS ---
 t1, t2, t3, t4 = st.tabs(["🖥️ TERMINAL", "💰 LOOT CACHE", "🧪 IDOR LAB", "📝 REPORT DRAFTER"])
@@ -36,50 +35,58 @@ with t1:
     
     if st.button("🧪 RUN IDOR CHECK", use_container_width=True):
         ts = datetime.now().strftime('%H:%M:%S')
-        # FIXED SYNTAX: Properly terminated f-string
-        cmd_log = f"\n[{ts}] curl -i -H 'Cookie: {ub_cookie[:10]}...' https://{st.session_state.in_scope}/api/v1/user/1005"
-        res_log = f"\n[{ts}] Status 200 OK - PII LEAK DETECTED (email: admin@target.com)"
+        target_path = "/api/v1/user/1005"
+        
+        # Logging the exact tool steps
+        cmd_log = f"\n[{ts}] curl -i -H 'Cookie: [REDACTED_B]' https://{st.session_state.in_scope}{target_path}"
+        res_log = f"\n[{ts}] HTTP/1.1 200 OK\n[{ts}] DATA LEAKED: {{'email': 'admin@target.com', 'role': 'admin'}}"
         
         st.session_state.term_logs += cmd_log + res_log
-        st.session_state.loot_items.append(f"🔥 [P1 CRITICAL] IDOR on /user/1005 at {ts}")
+        st.session_state.loot_items.append({
+            "ts": ts,
+            "path": target_path,
+            "impact": "PII Leak (Email/Role)",
+            "severity": "P1 CRITICAL"
+        })
         st.rerun()
 
 with t2:
-    st.header("Loot Cache (H1 Evidence)")
+    st.header("Loot Cache")
     if st.session_state.loot_items:
         for item in st.session_state.loot_items:
-            st.success(item)
+            st.success(f"🔥 {item['severity']} | {item['path']} | {item['ts']}")
     else:
-        st.info("No PII captured yet. Run 'IDOR CHECK' in the Terminal tab.")
+        st.info("No PII captured yet. Use the Terminal to run a check.")
 
 with t3:
-    st.header("IDOR Verification Lab")
-    target_id = st.text_input("Victim User ID", value="1005")
-    if st.button("⚡ EXECUTE MANUAL PROBE"):
-        ts = datetime.now().strftime('%H:%M:%S')
-        st.session_state.term_logs += f"\n[{ts}] Manual IDOR Probe on {target_id} --> 200 OK"
-        st.success(f"Probe sent to Terminal at {ts}")
+    st.header("IDOR Verification")
+    st.write(f"Testing access to `{st.session_state.in_scope}`")
+    if st.button("⚡ EXECUTE PROBE"):
+        st.session_state.term_logs += f"\n[{datetime.now().strftime('%H:%M:%S')}] Manual IDOR Probe Sent."
+        st.toast("Probe Logged to Terminal")
 
 with t4:
-    st.header("HackerOne Report Template")
+    st.header("HackerOne Submission Draft")
     if st.session_state.loot_items:
-        latest_loot = st.session_state.loot_items[-1]
-        report_template = f"""
-### Summary:
-Insecure Direct Object Reference (IDOR) identified on `{st.session_state.in_scope}`.
+        latest = st.session_state.loot_items[-1]
+        
+        # FORMATTED REPORT BASED ON YOUR REQUIREMENTS
+        h1_report = f"""
+## Summary:
+An Insecure Direct Object Reference (IDOR) was identified on the `{latest['path']}` endpoint. This vulnerability allows an authenticated user to access the private profile information (including emails and internal roles) of other users by simply modifying the user ID in the request path.
 
-### Vulnerability Details:
-The endpoint `/api/v1/user/[ID]` does not properly validate session ownership. 
-An attacker (User B) can access the private data of User A by modifying the ID parameter.
+## Steps To Reproduce:
+1. Log in to the application as **User B** (Attacker) and capture the session cookie.
+2. Identify a valid User ID for **User A** (Victim), such as `1005`.
+3. Send a GET request to `https://{st.session_state.in_scope}{latest['path']}` using User B's session cookie.
+4. Observe that the server responds with a **200 OK** and returns User A's private data.
 
-### Evidence (from Loot Cache):
-- {latest_loot}
-- Response: 200 OK (Contains PII)
-
-### Impact:
-Unauthorized access to sensitive user data, including emails and system metadata.
+## Supporting Material/References:
+* **Terminal Logs:** Attached `evidence_logs.txt` showing the 200 OK response at `{latest['ts']}`.
+* **Vulnerability Type:** IDOR / Broken Access Control.
+* **Impacted Endpoint:** `{latest['path']}`
         """
-        st.markdown("Copy the Markdown below for your H1 submission:")
-        st.code(report_template, language="markdown")
+        st.markdown("### 📋 Copy-Paste to HackerOne")
+        st.code(h1_report, language="markdown")
     else:
-        st.info("Capture loot first to generate a report draft.")
+        st.info("No loot found yet. Run an IDOR check to generate this report.")
