@@ -1,108 +1,78 @@
-import os
-import sys
-import subprocess
-
-# --- 0. DEPENDENCY SELF-HEAL ---
-# This ensures BeautifulSoup and Requests are present before the rest of the app loads
-def heal_dependencies():
-    try:
-        import bs4
-        import requests
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "beautifulsoup4", "requests", "--break-system-packages"])
-        os.execl(sys.executable, sys.executable, *sys.argv) # Restart script to load new modules
-
-heal_dependencies()
-
 import streamlit as st
+import requests  # This must be here
+import os
 import shutil
 from datetime import datetime, timedelta
 
-# --- 1. THE H1 POLICY INTELLIGENCE ---
-def fetch_h1_policy(handle):
-    """
-    HackerOne programs often expose their structured scope via their public handle.
-    This function pulls the 'Instruction' and 'Bounty Eligibility' for each asset.
-    """
-    headers = {"Accept": "application/json", "User-Agent": "Mozilla/5.0 Smallville-Bot/2026"}
+# --- 1. SETTINGS & PATHS ---
+st.set_page_config(page_title="SMALLVILLE V14.5", layout="wide")
+st.markdown("<style>.stApp { background-color: #050505; color: #00ff00; font-family: 'Courier New', monospace; }</style>", unsafe_allow_html=True)
+
+# Define directories
+BIN_DIR = "/tmp/ruby_bin"
+LOOT_DIR = "/tmp/ruby_loot"
+for d in [BIN_DIR, LOOT_DIR]:
+    if not os.path.exists(d):
+        os.makedirs(d)
+
+# --- 2. H1 POLICY LOGIC ---
+def get_h1_data(handle):
+    # This function uses the 'requests' library imported at the top
+    headers = {"Accept": "application/json", "User-Agent": "Smallville-Scanner/2026"}
     url = f"https://hackerone.com/{handle}.json"
-    
     try:
-        res = requests.get(url, headers=headers, timeout=10)
-        if res.status_code != 200:
-            return None, f"Error: Program '{handle}' not found (Status {res.status_code})"
-        
-        data = res.json()
-        policy_text = data.get("policy", "No policy text found.")
-        scopes = data.get("structured_scopes", [])
-        
-        # Filter for only bounty-eligible assets to avoid 'points-only' rabbit holes
-        bounty_assets = [
-            {
-                "identifier": s.get("asset_identifier"),
-                "type": s.get("asset_type"),
-                "instruction": s.get("instruction", "None provided.")
-            }
-            for s in scopes if s.get("eligible_for_bounty")
-        ]
-        
-        return {"policy": policy_text, "assets": bounty_assets}, None
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            return r.json(), None
+        return None, f"Status {r.status_code}: Program not found."
     except Exception as e:
         return None, str(e)
 
-# --- 2. LAYOUT & UI ---
-st.set_page_config(page_title="SMALLVILLE V14.3", layout="wide")
-st.markdown("<style>.stApp { background-color: #050505; color: #00ff00; font-family: 'Courier New', monospace; }</style>", unsafe_allow_html=True)
-
-# --- 3. SIDEBAR: THE POLICY ENGINE ---
+# --- 3. SIDEBAR ---
 with st.sidebar:
-    st.title("🛡️ POLICY ENGINE")
-    h1_handle = st.text_input("HackerOne Handle", value="security", help="e.g., 'uber', 'starbucks', 'security'").strip()
+    st.title("🏹 H1 COMMANDER")
+    h1_handle = st.text_input("H1 Handle", value="security").strip()
     
-    if st.button("📖 READ & SYNC POLICY", use_container_width=True):
-        data, err = fetch_h1_policy(h1_handle)
-        if err:
-            st.error(err)
+    if st.button("📖 SYNC POLICY", use_container_width=True):
+        data, err = get_h1_data(h1_handle)
+        if data:
+            st.session_state.h1_policy = data
+            # Filter for Bounty-Eligible assets only
+            assets = [s['asset_identifier'] for s in data.get('structured_scopes', []) if s.get('eligible_for_bounty')]
+            st.session_state.whitelist = ", ".join(assets)
+            st.success(f"Locked onto {len(assets)} assets!")
         else:
-            st.session_state.h1_data = data
-            st.session_state.whitelist = ", ".join([a['identifier'] for a in data['assets']])
-            st.success(f"Synced {len(data['assets'])} Bounty Assets!")
+            st.error(f"Sync Failed: {err}")
 
     st.divider()
-    st.subheader("Rules of Engagement")
-    # This text area is now auto-filled by the scraper
-    whitelist_str = st.text_area("🟢 WHITELIST (Bounty Eligible)", value=st.session_state.get('whitelist', ''))
-    
+    whitelist = st.text_area("🟢 WHITELIST", value=st.session_state.get('whitelist', ''))
+
 # --- 4. MAIN HUD ---
-t1, t2, t3, t4 = st.tabs(["🚀 STRIKE", "📖 POLICY OVERVIEW", "📊 MATRIX", "🛠️ CONSOLE"])
+t1, t2, t3 = st.tabs(["🚀 STRIKE", "📜 POLICY OVERVIEW", "📊 MATRIX"])
 
 with t1:
-    st.subheader("Autonomous Strike Control")
-    target = st.selectbox("SELECT ASSET FROM SCOPE", st.session_state.get('whitelist', '').split(", "))
-    
-    if target:
-        # Show specific instructions for the selected asset
-        if 'h1_data' in st.session_state:
-            asset_info = next((a for a in st.session_state.h1_data['assets'] if a['identifier'] == target), None)
-            if asset_info:
-                st.warning(f"**INSTRUCTION FOR {target}:**\n{asset_info['instruction']}")
+    if 'h1_policy' in st.session_state:
+        st.subheader(f"Targeting: {h1_handle}")
+        targets = st.session_state.whitelist.split(", ")
+        selected = st.selectbox("Select Asset", targets)
         
-        col1, col2 = st.columns(2)
-        if col1.button("🔥 INITIATE 8-HOUR MARATHON"):
-            st.session_state.is_running = True
-            # The run_marathon function would go here
+        # Display Instructions
+        scopes = st.session_state.h1_policy.get('structured_scopes', [])
+        instr = next((s.get('instruction') for s in scopes if s.get('asset_identifier') == selected), "No specific instructions.")
+        
+        st.info(f"**INSTRUCTION:** {instr}")
+        
+        if st.button("🚀 START 8-HOUR MARATHON"):
+            st.warning(f"Marathon engaged on {selected}...")
     else:
-        st.info("Sync a policy in the sidebar to select a target.")
+        st.info("Sync a program handle in the sidebar to begin.")
 
 with t2:
-    st.subheader("Program Policy & Safe Harbor")
-    if 'h1_data' in st.session_state:
-        st.markdown(st.session_state.h1_data['policy'])
-    else:
-        st.write("No policy data loaded.")
+    if 'h1_policy' in st.session_state:
+        st.markdown(st.session_state.h1_policy.get('policy', 'No policy text.'))
 
-with t4:
-    st.subheader("⌨️ SYSTEM CONSOLE")
-    # Persistent terminal logs
-    if 'term_logs' not in st.session_state: st.session_state.term_logs = ""
-    st.code(st.session_state.term_logs, language="bash")
+with t3:
+    st.subheader("Arsenal Health")
+    for tool in ["subfinder", "nuclei", "garak"]:
+        ready = shutil.which(tool) or os.path.exists(os.path.join(BIN_DIR, tool))
+        st.write(f"{'🟢' if ready else '🔴'} {tool.upper()}")
