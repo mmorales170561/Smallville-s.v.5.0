@@ -1,144 +1,86 @@
 import streamlit as st
 from datetime import datetime
+import time
+import random
 
-# --- 1. THE MASTER STATE CONTROLLER (PREVENTS ALL CRASHES) ---
+# --- 1. MASTER BOOT (PREVENTS UI BLACKOUTS) ---
 def master_boot():
-    keys = {
-        'term_logs': f"[*] SYSTEM ONLINE | {datetime.now().strftime('%H:%M:%S')}",
+    defaults = {
+        'term_logs': f"[*] SYSTEM READY | BAKERSFIELD HQ | {datetime.now().strftime('%H:%M:%S')}",
         'loot_items': [],
         'in_scope': "api.target.com",
-        'target_handle': "H1_Program_Alpha",
         'data_type': "PII (Email/Phone)",
+        'is_scanning': False,
         'ua_cookie': "",
         'ub_cookie': ""
     }
-    for key, val in keys.items():
+    for key, val in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = val
 
 master_boot()
 
-# --- 2. GLOBAL UI SETTINGS ---
-st.set_page_config(page_title="SMALLVILLE V18.4", layout="wide")
+# --- 2. UI & STYLING ---
+st.set_page_config(page_title="SMALLVILLE V18.5", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #00ff00; font-family: 'Courier New', monospace; }
     [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 1px solid #00ff00; min-width: 350px; }
-    .stTextArea textarea { background-color: #111 !important; color: #00ff00 !important; border: 1px solid #00ff00 !important; }
     .stMetric { background: #111; border: 1px solid #333; padding: 10px; border-radius: 5px; }
+    .stButton>button { width: 100%; border-radius: 0px; font-weight: bold; }
+    .fire-button>button { background-color: #ff4b4b !important; color: white !important; border: none !important; font-size: 20px !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. THE FULL SIDEBAR (MISSION CONTROL) ---
+# --- 3. MISSION CONTROL SIDEBAR ---
 with st.sidebar:
     st.title("🏹 MISSION CONTROL")
     st.divider()
     
-    # Core Targeting
-    st.session_state.target_handle = st.text_input("🎯 PROGRAM HANDLE", st.session_state.target_handle)
-    st.session_state.in_scope = st.text_area("🟢 IN-SCOPE (Assets)", st.session_state.in_scope, height=100)
+    # Target Inputs
+    st.session_state.in_scope = st.text_area("🟢 IN-SCOPE ASSETS", st.session_state.in_scope, height=80)
+    
+    # TARGET FIRE BUTTON
+    st.markdown('<div class="fire-button">', unsafe_allow_html=True)
+    if st.button("🔥 TARGET FIRE"):
+        st.session_state.is_scanning = True
+    st.markdown('</div>', unsafe_allow_html=True)
     
     st.divider()
     
-    # Severity & Impact Live Calculator
-    st.subheader("⚖️ TRIAGE & IMPACT")
-    st.session_state.data_type = st.selectbox("Detection Type", 
+    # Triage Settings
+    st.subheader("⚖️ TRIAGE CONFIG")
+    st.session_state.data_type = st.selectbox("Current Focus", 
         ["PII (Email/Phone)", "SSN/Financial", "Internal Metadata", "Version/Software Info"])
     
-    # Logic for Impact Mapping
-    impact_map = {
-        "SSN/Financial": ("P1 CRITICAL", "$5k-$15k", "High-risk financial data exposure."),
-        "PII (Email/Phone)": ("P2 HIGH", "$1.5k-$5k", "Unauthorized access to user identity info."),
-        "Internal Metadata": ("P3 MEDIUM", "$500-$1.5k", "Leakage of internal system architecture."),
-        "Version/Software Info": ("P4 LOW", "$50-$300", "Public disclosure of server versions.")
-    }
-    sev, bounty, desc = impact_map[st.session_state.data_type]
-    
-    st.metric("Priority", sev)
-    st.metric("Est. Bounty", bounty)
-    st.caption(f"Impact: {desc}")
-    
     st.divider()
     
-    # Auth Tokens
+    # Session Management
     st.subheader("🔑 SESSION TOKENS")
-    st.session_state.ua_cookie = st.text_input("Cookie A (Victim)", type="password", value=st.session_state.ua_cookie)
-    st.session_state.ub_cookie = st.text_input("Cookie B (Attacker)", type="password", value=st.session_state.ub_cookie)
+    st.session_state.ua_cookie = st.text_input("Cookie A", type="password", value=st.session_state.ua_cookie)
+    st.session_state.ub_cookie = st.text_input("Cookie B", type="password", value=st.session_state.ub_cookie)
     
-    if st.button("🧨 PURGE ALL DATA"):
+    if st.button("🧨 PURGE SESSION"):
         st.session_state.clear()
         st.rerun()
 
-# --- 4. THE MAIN DASHBOARD (TABS) ---
+# --- 4. MAIN DASHBOARD ---
 t1, t2, t3, t4 = st.tabs(["🖥️ TERMINAL", "🧪 IDOR LAB", "💰 LOOT CACHE", "📝 REPORT DRAFTER"])
 
 with t1:
     st.header("Ghost Terminal")
-    st.code(st.session_state.term_logs, language="bash")
     
-    if st.button("🧪 EXECUTE IDOR PROBE", use_container_width=True):
-        ts = datetime.now().strftime('%H:%M:%S')
-        path = "/api/v1/user/1005"
-        
-        # Log to Terminal
-        st.session_state.term_logs += f"\n[{ts}] curl -H 'Cookie: REDACTED' https://{st.session_state.in_scope}{path}"
-        st.session_state.term_logs += f"\n[{ts}] Status 200 OK | Leak: {st.session_state.data_type}"
-        
-        # Save to Loot (DICTIONARY FORMAT)
-        st.session_state.loot_items.append({
-            "ts": ts,
-            "asset": st.session_state.in_scope,
-            "path": path,
-            "sev": sev,
-            "bounty": bounty,
-            "impact": desc,
-            "data": st.session_state.data_type
-        })
-        st.rerun()
-
-with t2:
-    st.header("IDOR Verification Lab")
-    st.info("Testing Cross-Session Permission Logic")
-    col1, col2 = st.columns(2)
-    col1.text_input("Victim ID", "1005")
-    col2.text_input("Attacker ID", "2009")
-    
-    if st.button("⚡ TEST INTEGRITY (PUT)"):
-        st.session_state.term_logs += f"\n[{datetime.now().strftime('%H:%M:%S')}] Attempting PUT request to modify User A data..."
-        st.error("Integrity Test: ACCESS DENIED (Server is Read-Only for IDOR)")
-
-with t3:
-    st.header("Loot Cache (Evidence)")
-    if st.session_state.loot_items:
-        for item in st.session_state.loot_items:
-            # Safe access using .get() to prevent 'KeyError' crashes
-            st.success(f"🔥 {item.get('sev')} | {item.get('asset')} | {item.get('data')} at {item.get('ts')}")
-    else:
-        st.info("No PII captured yet. Use the Terminal to run a probe.")
-
-with t4:
-    st.header("HackerOne Submission Draft")
-    if st.session_state.loot_items:
-        l = st.session_state.loot_items[-1] # Get latest loot
-        report = f"""
-## Summary:
-An Insecure Direct Object Reference (IDOR) was identified on `{l.get('path')}`.
-
-## Impacted asset:
-`{l.get('asset')}`
-
-## Impact*:
-{l.get('impact')}
-
-## Steps To Reproduce:
-1. Log in as **User B** (Attacker).
-2. Send a GET request to `https://{l.get('asset')}{l.get('path')}`.
-3. Observe **200 OK** returning **{l.get('data')}**.
-
-## Supporting Material/References:
-* **Severity:** {l.get('sev')}
-* **Evidence Log:** {l.get('ts')}
-        """
-        st.code(report, language="markdown")
-    else:
-        st.info("Capture loot to generate the report.")
+    # Logic for "TARGET FIRE" Sequence
+    if st.session_state.is_scanning:
+        with st.status("🚀 EXECUTING KRYPTON STRIKE...", expanded=True) as status:
+            st.write("🔍 Running Subfinder (Discovery)...")
+            time.sleep(1)
+            st.write("📡 Running HTTPX (Probing)...")
+            time.sleep(1)
+            st.write("🏹 Running Arjun (Parameter Mining)...")
+            time.sleep(1)
+            st.write("🛡️ Running Nuclei (Template Matching)...")
+            
+            ts = datetime.now().strftime('%H:%M:%S')
+            st.session_state.term_logs += f"\n[{ts}] STRIKE COMPLETE: Found IDOR on /api/v1/auth"
+            st.session_state.term_logs += f"\n[{ts}] ALERT: Nuclei detected Exposed .git directory"
