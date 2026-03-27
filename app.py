@@ -1,93 +1,88 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import os
 import re
 
-# --- 1. CORE CONFIG ---
-st.set_page_config(page_title="SMALLVILLE V14.7", layout="wide")
-st.markdown("<style>.stApp { background-color: #050505; color: #00ff00; font-family: 'Courier New', monospace; } b { color: #ff3131; font-weight: bold; text-decoration: underline; }</style>", unsafe_allow_html=True)
+# --- 1. HUD ---
+st.set_page_config(page_title="SMALLVILLE V14.8", layout="wide")
+st.markdown("<style>.stApp { background-color: #050505; color: #00ff00; font-family: 'Courier New', monospace; } b { color: #ff3131; font-weight: bold; }</style>", unsafe_allow_html=True)
 
-# --- 2. POLICY ANALYZER TOOLS ---
-def highlight_policy(text):
-    """Bolds and underlines critical H1 legal terms for fast reading."""
-    keywords = [
-        "bounty", "eligible", "in-scope", "out-of-scope", "exclude", 
-        "prohibited", "automated", "dos", "denial of service", "critical",
-        "p1", "p2", "safe harbor", "instruction"
-    ]
-    for word in keywords:
-        # Case-insensitive replacement with HTML bold tags
-        pattern = re.compile(re.escape(word), re.IGNORECASE)
-        text = pattern.sub(f"<b>{word.upper()}</b>", text)
-    return text
-
-def scrape_h1_policy(handle):
+# --- 2. THE GHOST PARSER ---
+def deep_sync_h1(handle):
     url = f"https://hackerone.com/{handle}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Smallville-Bot/2026"}
+    # 2026 Ghost Headers to bypass "No Policy Found"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,web3/2026",
+        "X-Requested-With": "XMLHttpRequest", 
+        "Referer": "https://hackerone.com/programs"
+    }
+    
     try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code != 200:
-            return None, f"Target '{handle}' Unreachable (Status {response.status_code})"
+        res = requests.get(url, headers=headers, timeout=15)
+        if res.status_code != 200:
+            return None, f"Access Denied (Code {res.status_code})"
         
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(res.text, 'html.parser')
         
-        # Extract Policy Text
-        policy_div = soup.find('div', {'class': re.compile(r'.*policy.*')}) or soup.find('article')
-        raw_text = policy_div.get_text(separator='\n') if policy_div else "No policy found."
+        # Search for the policy in common 2026 containers
+        policy_box = soup.find('div', {'id': 'policy'}) or \
+                     soup.find('div', {'class': re.compile(r'spec-policy|instruction')}) or \
+                     soup.find('article')
         
-        # Extract Assets (Look for domains)
-        assets = list(set(re.findall(r'[\w\*-]+\.[\w\.-]+\.[a-z]{2,}', raw_text)))
+        if not policy_box:
+            # Fallback: Grab the largest text block on the page
+            paragraphs = soup.find_all('p')
+            full_text = "\n".join([p.text for p in paragraphs])
+        else:
+            full_text = policy_box.get_text(separator='\n')
+
+        # Asset Extraction (Regex for domains/wildcards)
+        assets = list(set(re.findall(r'(?:\*\.)?[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.[a-z]{2,6}', full_text)))
         
-        return {"policy": raw_text, "assets": assets}, None
+        return {"policy": full_text, "assets": assets}, None
     except Exception as e:
         return None, str(e)
 
-# --- 3. COMMAND CENTER ---
+# --- 3. SIDEBAR ---
 with st.sidebar:
-    st.title("🏹 H1 SCOPE GUARD")
-    h1_handle = st.text_input("H1 Program Handle", value="security").strip()
+    st.title("🏹 PROTOCOL GHOST")
+    h1_handle = st.text_input("H1 Handle", value="security").strip()
     
-    if st.button("📖 SYNC & ANALYZE POLICY", use_container_width=True):
-        data, err = scrape_h1_policy(h1_handle)
-        if data:
-            st.session_state.h1_data = data
-            st.session_state.whitelist = ", ".join(data['assets'])
-            st.success("Policy Synced!")
-        else:
-            st.error(err)
+    if st.button("📡 GHOST SYNC", use_container_width=True):
+        with st.spinner("Bypassing H1 Protection..."):
+            data, err = deep_sync_h1(h1_handle)
+            if data:
+                st.session_state.h1_data = data
+                # Identify bounty targets vs points-only targets
+                st.session_state.whitelist = ", ".join(data['assets'])
+                st.success("Targeting Synced.")
+            else:
+                st.error(f"Sync Failed: {err}")
 
-    st.divider()
-    st.subheader("Rules of Engagement")
-    whitelist = st.text_area("🟢 WHITELIST", value=st.session_state.get('whitelist', ''))
-
-# --- 4. THE HUNTER'S HUB ---
-t1, t2, t3 = st.tabs(["🚀 STRIKE", "📜 OVERVIEW (ANALYZED)", "📊 MATRIX"])
+# --- 4. THE MARATHON HUB ---
+t1, t2 = st.tabs(["🚀 STRIKE", "📜 POLICY ANALYSIS"])
 
 with t1:
     if 'h1_data' in st.session_state:
-        st.subheader(f"Strike Targets: {h1_handle}")
-        targets = st.session_state.whitelist.split(", ")
-        selected = st.selectbox("Select Target Domain", [t for t in targets if '.' in t])
+        target = st.selectbox("Select Scoped Asset", st.session_state.whitelist.split(", "))
         
-        # Automatic Intelligence Check
-        policy_lower = st.session_state.h1_data['policy'].lower()
-        if any(x in policy_lower for x in ["no automated", "prohibit automated", "don't use tools"]):
-            st.error("🚨 POLICY RESTRICTION: This program restricts automated tools. Engage with caution.")
-        
-        if st.button("🚀 INITIATE 8-HOUR MARATHON"):
-            st.warning(f"Marathon active on {selected}. Scanning for P1/P2 vulnerabilities...")
+        # Compliance Engine: Checks the overview for you
+        policy_text = st.session_state.h1_data['policy'].lower()
+        if "automated" in policy_text and ("no" in policy_text or "prohibit" in policy_text):
+            st.error("🛑 AUTO-SCANNING PROHIBITED BY POLICY")
+        else:
+            st.success("✅ AUTOMATION ALLOWED (Check rate limits)")
+
+        if st.button("🔥 START 8-HOUR STRIKE"):
+            st.info(f"Striking {target}... Monitoring for P1 signals.")
     else:
-        st.info("Sync a program handle to load targets.")
+        st.info("Sync a program in the sidebar.")
 
 with t2:
     if 'h1_data' in st.session_state:
-        st.subheader("Highlighted Policy Overview")
-        # Use the highlighing function for "Reading Everything It Says"
-        analyzed_text = highlight_policy(st.session_state.h1_data['policy'])
-        st.markdown(analyzed_text, unsafe_allow_html=True)
-
-with t3:
-    st.subheader("System Arsenal")
-    for tool in ["subfinder", "nuclei", "garak", "arjun"]:
-        st.write(f"🟢 {tool.upper()}")
+        # Highlighting rules
+        raw = st.session_state.h1_data['policy']
+        for word in ["bounty", "exclude", "out-of-scope", "prohibited", "critical"]:
+            raw = re.sub(f"(?i){word}", f"<b>{word.upper()}</b>", raw)
+        st.markdown(raw, unsafe_allow_html=True)
