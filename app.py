@@ -1,34 +1,36 @@
 import streamlit as st
 from datetime import datetime
 
-# --- 1. GLOBAL BOOTLOADER ---
-def global_init():
-    if 'term_logs' not in st.session_state: 
-        st.session_state.term_logs = f"[*] SYSTEM ONLINE | {datetime.now().strftime('%H:%M:%S')}"
-    if 'loot_items' not in st.session_state: 
-        st.session_state.loot_items = []
-    if 'in_scope' not in st.session_state:
-        st.session_state.in_scope = "api.target.com"
+# --- 1. SEVERITY LOGIC ENGINE ---
+def calculate_severity(data_type):
+    """Maps data types to HackerOne standard severity levels."""
+    levels = {
+        "SSN/Financial": "P1 CRITICAL",
+        "PII (Email/Phone)": "P2 HIGH",
+        "Internal Metadata": "P3 MEDIUM",
+        "Version/Software Info": "P4 LOW"
+    }
+    return levels.get(data_type, "P3 MEDIUM")
 
-global_init()
+# --- 2. GLOBAL BOOTLOADER ---
+if 'term_logs' not in st.session_state: 
+    st.session_state.term_logs = f"[*] SYSTEM ONLINE | {datetime.now().strftime('%H:%M:%S')}"
+if 'loot_items' not in st.session_state: 
+    st.session_state.loot_items = []
 
-# --- 2. SIDEBAR ---
+# --- 3. SIDEBAR ---
 with st.sidebar:
     st.title("🏹 MISSION CONTROL")
     st.divider()
-    st.session_state.in_scope = st.text_area("🟢 IN-SCOPE", value=st.session_state.in_scope, height=80)
+    in_scope = st.text_input("🎯 TARGET ASSET", value="api.target.com")
     
     st.divider()
-    st.subheader("🔑 SESSION TOKENS")
-    ua_cookie = st.text_input("Cookie A (Victim)", type="password")
-    ub_cookie = st.text_input("Cookie B (Attacker)", type="password")
-    
-    st.divider()
-    if st.button("🧨 EMERGENCY PURGE CACHE"):
-        st.session_state.clear()
-        st.rerun()
+    st.subheader("⚖️ SEVERITY CONFIG")
+    data_found = st.selectbox("Detected Data Type", ["PII (Email/Phone)", "SSN/Financial", "Internal Metadata", "Version/Software Info"])
+    current_sev = calculate_severity(data_found)
+    st.info(f"Calculated Priority: **{current_sev}**")
 
-# --- 3. THE COMMAND TABS ---
+# --- 4. THE COMMAND TABS ---
 t1, t2, t3, t4 = st.tabs(["🖥️ TERMINAL", "💰 LOOT CACHE", "🧪 IDOR LAB", "📝 REPORT DRAFTER"])
 
 with t1:
@@ -39,52 +41,46 @@ with t1:
         ts = datetime.now().strftime('%H:%M:%S')
         target_path = "/api/v1/user/1005"
         
-        # Terminal Logging
-        cmd_log = f"\n[{ts}] curl -i -H 'Cookie: [REDACTED_B]' https://{st.session_state.in_scope}{target_path}"
-        res_log = f"\n[{ts}] Status 200 OK - PII LEAK DETECTED"
-        st.session_state.term_logs += cmd_log + res_log
+        # Log to Terminal
+        st.session_state.term_logs += f"\n[{ts}] GET {target_path} --> 200 OK"
+        st.session_state.term_logs += f"\n[{ts}] Found {data_found} in response body."
         
-        # Data structure with Asset Tracking
+        # Save to Loot with the Calculator's Severity
         st.session_state.loot_items.append({
             "ts": ts,
-            "asset": st.session_state.in_scope, # Tracks the specific asset
+            "asset": in_scope,
             "path": target_path,
-            "impact": "Unauthenticated PII Access",
-            "severity": "P1 CRITICAL"
+            "data": data_found,
+            "severity": current_sev
         })
         st.rerun()
 
 with t2:
     st.header("Loot Cache")
-    if st.session_state.loot_items:
-        for item in st.session_state.loot_items:
-            st.success(f"🔥 {item.get('severity')} | {item.get('asset')} | {item.get('ts')}")
-    else:
-        st.info("No PII captured. Run a check in the Terminal.")
+    for item in st.session_state.loot_items:
+        st.success(f"🔥 {item['severity']} | {item['asset']} | {item['data']}")
 
 with t4:
     st.header("HackerOne Submission Draft")
     if st.session_state.loot_items:
         latest = st.session_state.loot_items[-1]
         
-        # UPDATED REPORT FORMAT WITH IMPACTED ASSET
         h1_report = f"""
 ## Summary:
-An Insecure Direct Object Reference (IDOR) was identified on `{latest.get('path')}`.
+An Insecure Direct Object Reference (IDOR) was identified on `{latest['path']}`.
 
 ## Impacted asset:
-`{latest.get('asset', 'Unknown')}`
+`{latest['asset']}`
 
 ## Steps To Reproduce:
-1. Log in to the application as **User B** (Attacker) and capture the session cookie.
-2. Identify a valid User ID for **User A** (Victim), such as `1005`.
-3. Send a GET request to `https://{latest.get('asset')}{latest.get('path')}` using User B's session cookie.
-4. Observe that the server responds with a **200 OK** and returns User A's private data.
+1. Log in as **User B** (Attacker).
+2. Request `https://{latest['asset']}{latest['path']}`.
+3. Observe **200 OK** returning **{latest['data']}**.
 
 ## Supporting Material/References:
-* **Terminal Logs:** Evidence captured at {latest.get('ts')}.
+* **Severity:** {latest['severity']}
+* **Evidence Timestamp:** {latest['ts']}
         """
-        st.markdown("### 📋 Copy-Paste to HackerOne")
         st.code(h1_report, language="markdown")
     else:
-        st.info("No loot found yet. Hit 'RUN IDOR CHECK' in the Terminal to generate a report.")
+        st.info("Run a check to generate a report.")
