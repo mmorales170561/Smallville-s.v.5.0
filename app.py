@@ -1,102 +1,66 @@
 import streamlit as st
 from datetime import datetime
 
-# --- 1. SEVERITY & BOUNTY LOGIC ---
-def get_market_rates(data_type):
-    """2026 Market Rates for Bug Bounties"""
-    rates = {
-        "SSN/Financial": ("P1 CRITICAL", "$5,000 - $15,000+"),
-        "PII (Email/Phone)": ("P2 HIGH", "$1,500 - $5,000"),
-        "Internal Metadata": ("P3 MEDIUM", "$500 - $1,500"),
-        "Version/Software Info": ("P4 LOW", "$50 - $300")
+# --- 1. IMPACT LOGIC ENGINE ---
+def get_impact_description(data_type):
+    """Generates professional Impact statements for H1 reports."""
+    impacts = {
+        "SSN/Financial": "Critical: Full compromise of user financial data, leading to identity theft and regulatory (GDPR/CCPA) non-compliance.",
+        "PII (Email/Phone)": "High: Mass harvesting of user contact details, enabling targeted phishing attacks and privacy violations.",
+        "Internal Metadata": "Medium: Leakage of system architecture and user UUIDs, aiding in further exploitation of the infrastructure.",
+        "Version/Software Info": "Low: Information disclosure of server versions, allowing attackers to map the attack surface for known CVEs."
     }
-    return rates.get(data_type, ("P3 MEDIUM", "$500"))
+    return impacts.get(data_type, "Unauthorized access to restricted data endpoints.")
 
-# --- 2. GLOBAL BOOTLOADER (FORCED SANITIZATION) ---
-if 'loot_items' not in st.session_state:
-    st.session_state.loot_items = []
-if 'term_logs' not in st.session_state:
-    st.session_state.term_logs = f"[*] SYSTEM ONLINE | BAKERSFIELD HQ | {datetime.now().strftime('%H:%M:%S')}"
+# --- 2. GLOBAL BOOTLOADER ---
+if 'loot_items' not in st.session_state: st.session_state.loot_items = []
+if 'term_logs' not in st.session_state: st.session_state.term_logs = "[*] SYSTEM READY"
 
 # --- 3. MISSION CONTROL SIDEBAR ---
 with st.sidebar:
     st.title("🏹 MISSION CONTROL")
-    st.divider()
-    target_input = st.text_input("🎯 TARGET ASSET", value="api.target.com")
+    target_asset = st.text_input("🎯 TARGET ASSET", value="api.target.com")
     
     st.divider()
-    st.subheader("⚖️ TRIAGE CONFIG")
-    data_found = st.selectbox("Detected Data Leak", ["PII (Email/Phone)", "SSN/Financial", "Internal Metadata", "Version/Software Info"])
-    sev_level, est_bounty = get_market_rates(data_found)
+    st.subheader("⚖️ IMPACT CONFIG")
+    data_found = st.selectbox("Data Type", ["PII (Email/Phone)", "SSN/Financial", "Internal Metadata", "Version/Software Info"])
     
-    st.metric("Estimated Payout", est_bounty)
-    st.info(f"Priority: **{sev_level}**")
-    
-    st.divider()
-    if st.button("🧨 PURGE OLD SESSION DATA"):
-        st.session_state.clear()
-        st.rerun()
+    # Logic: Auto-calculate Impact
+    impact_statement = get_impact_description(data_found)
+    st.warning(f"**Impact:** {impact_statement}")
 
-# --- 4. COMMAND TABS (FIXED CRASH LOGIC) ---
+# --- 4. COMMAND TABS ---
 t1, t2, t3, t4 = st.tabs(["🖥️ TERMINAL", "💰 LOOT CACHE", "🧪 IDOR LAB", "📝 REPORT DRAFTER"])
 
 with t1:
     st.header("Ghost Terminal")
     st.code(st.session_state.term_logs, language="bash")
-    
-    if st.button("🧪 RUN IDOR CHECK", use_container_width=True):
+    if st.button("🧪 RUN IDOR CHECK"):
         ts = datetime.now().strftime('%H:%M:%S')
-        path = "/api/v1/user/1005"
-        
-        # Log to Terminal
-        st.session_state.term_logs += f"\n[{ts}] PROBE {target_input}{path} --> 200 OK"
-        st.session_state.term_logs += f"\n[{ts}] ALERT: Found {data_found} (Impact: {sev_level})"
-        
-        # Save with full dictionary structure
+        st.session_state.term_logs += f"\n[{ts}] IDOR HIT on {target_asset} --> 200 OK ({data_found})"
         st.session_state.loot_items.append({
-            "ts": ts,
-            "asset": target_input,
-            "path": path,
-            "data": data_found,
-            "severity": sev_level,
-            "bounty": est_bounty
+            "ts": ts, "asset": target_asset, "path": "/api/v1/user/1005",
+            "data": data_found, "impact_desc": impact_statement
         })
         st.rerun()
-
-with t2:
-    st.header("Loot Cache")
-    if st.session_state.loot_items:
-        for item in st.session_state.loot_items:
-            # FIX: Using .get() prevents the 'asset' KeyError crash
-            s = item.get('severity', 'P3')
-            a = item.get('asset', 'Unknown Asset')
-            d = item.get('data', 'General Data')
-            st.success(f"🔥 {s} | {a} | {d}")
-    else:
-        st.info("No PII captured yet.")
 
 with t4:
     st.header("HackerOne Submission Draft")
     if st.session_state.loot_items:
         latest = st.session_state.loot_items[-1]
-        
         h1_report = f"""
 ## Summary:
-An Insecure Direct Object Reference (IDOR) was identified on `{latest.get('path')}`.
+IDOR identified on `{latest.get('path')}`.
 
 ## Impacted asset:
 `{latest.get('asset')}`
+
+## Impact*:
+{latest.get('impact_desc')}
 
 ## Steps To Reproduce:
 1. Log in as **User B** (Attacker).
 2. Request `https://{latest.get('asset')}{latest.get('path')}`.
 3. Observe **200 OK** returning **{latest.get('data')}**.
-
-## Supporting Material/References:
-* **Severity:** {latest.get('severity')}
-* **Estimated Value:** {latest.get('bounty')}
-* **Evidence Timestamp:** {latest.get('ts')}
         """
         st.code(h1_report, language="markdown")
-    else:
-        st.info("Run a terminal check to generate the report.")
