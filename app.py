@@ -1,18 +1,12 @@
 import streamlit as st
 from datetime import datetime
 
-# --- 1. GLOBAL BOOTLOADER (WITH DATA SANITIZER) ---
+# --- 1. GLOBAL BOOTLOADER ---
 def global_init():
     if 'term_logs' not in st.session_state: 
-        st.session_state.term_logs = f"[*] SYSTEM ONLINE | BAKERSFIELD HQ | {datetime.now().strftime('%Y-%m-%d')}"
-    
-    # SANITIZER: If loot_items contains strings instead of dictionaries, clear it to prevent the KeyError
-    if 'loot_items' not in st.session_state:
+        st.session_state.term_logs = f"[*] SYSTEM ONLINE | {datetime.now().strftime('%H:%M:%S')}"
+    if 'loot_items' not in st.session_state: 
         st.session_state.loot_items = []
-    elif len(st.session_state.loot_items) > 0:
-        if isinstance(st.session_state.loot_items[0], str):
-            st.session_state.loot_items = [] # Purge legacy string data
-            
     if 'in_scope' not in st.session_state:
         st.session_state.in_scope = "api.target.com"
 
@@ -47,13 +41,13 @@ with t1:
         
         # Terminal Logging
         cmd_log = f"\n[{ts}] curl -i -H 'Cookie: [REDACTED_B]' https://{st.session_state.in_scope}{target_path}"
-        res_log = f"\n[{ts}] HTTP/1.1 200 OK | PII LEAK: {{'email': 'admin@target.com'}}"
-        
+        res_log = f"\n[{ts}] Status 200 OK - PII LEAK DETECTED"
         st.session_state.term_logs += cmd_log + res_log
         
-        # Data structure for the Loot Tab
+        # Data structure with Asset Tracking
         st.session_state.loot_items.append({
             "ts": ts,
+            "asset": st.session_state.in_scope, # Tracks the specific asset
             "path": target_path,
             "impact": "Unauthenticated PII Access",
             "severity": "P1 CRITICAL"
@@ -64,11 +58,7 @@ with t2:
     st.header("Loot Cache")
     if st.session_state.loot_items:
         for item in st.session_state.loot_items:
-            # Safe access using .get() to prevent further crashes
-            sev = item.get('severity', 'UNKNOWN')
-            path = item.get('path', 'N/A')
-            time_found = item.get('ts', '00:00:00')
-            st.success(f"🔥 {sev} | {path} | {time_found}")
+            st.success(f"🔥 {item.get('severity')} | {item.get('asset')} | {item.get('ts')}")
     else:
         st.info("No PII captured. Run a check in the Terminal.")
 
@@ -76,18 +66,25 @@ with t4:
     st.header("HackerOne Submission Draft")
     if st.session_state.loot_items:
         latest = st.session_state.loot_items[-1]
+        
+        # UPDATED REPORT FORMAT WITH IMPACTED ASSET
         h1_report = f"""
 ## Summary:
 An Insecure Direct Object Reference (IDOR) was identified on `{latest.get('path')}`.
 
+## Impacted asset:
+`{latest.get('asset', 'Unknown')}`
+
 ## Steps To Reproduce:
-1. Log in as User B (Attacker).
-2. Request `https://{st.session_state.in_scope}{latest.get('path')}`.
-3. Observe 200 OK with User A's data.
+1. Log in to the application as **User B** (Attacker) and capture the session cookie.
+2. Identify a valid User ID for **User A** (Victim), such as `1005`.
+3. Send a GET request to `https://{latest.get('asset')}{latest.get('path')}` using User B's session cookie.
+4. Observe that the server responds with a **200 OK** and returns User A's private data.
 
 ## Supporting Material/References:
 * **Terminal Logs:** Evidence captured at {latest.get('ts')}.
         """
+        st.markdown("### 📋 Copy-Paste to HackerOne")
         st.code(h1_report, language="markdown")
     else:
-        st.info("Capture loot to generate report.")
+        st.info("No loot found yet. Hit 'RUN IDOR CHECK' in the Terminal to generate a report.")
