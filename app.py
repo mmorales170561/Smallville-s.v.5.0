@@ -1,81 +1,93 @@
 import streamlit as st
 import random
-import time
 import re
 from datetime import datetime
 
-# --- 1. GLOBAL UI & GHOST SETTINGS ---
-st.set_page_config(page_title="SMALLVILLE V16.9", layout="wide")
-# The "Ghost Terminal" CSS
-st.markdown("<style>.stApp { background-color: #050505; color: #00ff00; font-family: 'Courier New', monospace; }</style>", unsafe_allow_html=True)
+# --- 1. THE ETERNAL BOOTLOADER ---
+def initialize_system():
+    # Double-Lock Persistence: Ensures sidebar data never vanishes
+    if 'in_scope' not in st.session_state: st.session_state.in_scope = "api.target.com\n*.target.com"
+    if 'out_scope' not in st.session_state: st.session_state.out_scope = ".gov, .mil, logout, delete"
+    if 'target_handle' not in st.session_state: st.session_state.target_handle = "security"
+    if 'term_logs' not in st.session_state: st.session_state.term_logs = "[*] SYSTEM BOOTED\n[*] READY FOR H1 STRIKE"
+    if 'loot_items' not in st.session_state: st.session_state.loot_items = []
 
-# Define variables globally for all tabs
-defaults = {
-    'terminal_logs': "[*] TERMINAL INITIALIZED...",
-    'found_subs': ["api.target.com", "dev.target.com", "staging.target.com", "s3-backup.target.com"],
-    'last_probe': "/api/v1 - Status 200",
-    'loot_list': ["🟢 Email: admin@target.com found on /api/v1/users", "🟢 IP: 10.0.0.1 found on /api/v1/config"]
-}
-for key, val in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = val
+initialize_system()
 
-# --- 2. COMMAND SIDEBAR ---
+# --- 2. GLOBAL STYLES ---
+st.set_page_config(page_title="SMALLVILLE V17.0", layout="wide")
+st.markdown("""
+    <style>
+    .stApp { background-color: #050505; color: #00ff00; font-family: 'Courier New', monospace; }
+    .stTextArea textarea { background-color: #0a0a0a !important; color: #00ff00 !important; border: 1px solid #00ff00 !important; }
+    .stMetric { border: 1px solid #333; padding: 10px; border-radius: 5px; background: #111; }
+    .terminal-window { background-color: #000; border: 2px solid #333; padding: 10px; color: #0f0; }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- 3. RESTORED COMMAND SIDEBAR ---
 with st.sidebar:
-    st.title("🏹 COMMAND CENTER")
-    st.divider()
-    # The Bakersfield "Jitter" Control
-    st.subheader("👻 JITTER (Human Mimicry)")
-    jitter = st.slider("Request Delay (Seconds)", 5, 60, 15)
-    st.info(f"Using {jitter}s delay to stay undetectable.")
-
-# --- 3. THE COMMAND CENTER HUD (TABS) ---
-t1, t2, t3, t4 = st.tabs(["🚀 STRIKE HUD", "📊 VULNERABILITY MAP", "💰 LOOT CACHE", "🛠️ SYSTEM LOGS"])
-
-with t1:
-    st.header("Active Ghost Strike")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Probes Sent", "1,240", delta="+1 (Ghost Delay)")
-    c2.metric("Last Probe Status", "200 OK", delta="Stable")
-    c3.metric("Response Time", "142ms")
-    
+    st.title("🏹 MISSION CONTROL")
     st.markdown("---")
     
-    # THE TERMINAL EMULATOR
-    st.subheader("🖥️ TERMINAL EMULATOR (Live Feed)")
-    st.code(st.session_state.terminal_logs, language="bash")
+    # Target Handle (The Program)
+    st.session_state.target_handle = st.text_input("🎯 H1 PROGRAM HANDLE", value=st.session_state.target_handle)
     
-    if st.button("🔥 PUSH UPDATE TO TERMINAL"):
-        # This simulates the tool working in the background
-        new_log = f"\n[{datetime.now().strftime('%H:%M:%S')}] GET /api/v1/users?limit=10 --> 200 OK (Jitter {jitter}s)"
-        st.session_state.terminal_logs += new_log
+    st.divider()
+    
+    # In-Scope / Out-of-Scope Restoration
+    st.subheader("🛡️ RULES OF ENGAGEMENT")
+    st.session_state.in_scope = st.text_area("🟢 IN-SCOPE (Whitelist)", value=st.session_state.in_scope, height=150)
+    st.session_state.out_scope = st.text_area("🔴 OUT-OF-SCOPE (Blacklist)", value=st.session_state.out_scope, height=100)
+    
+    st.divider()
+    
+    # IDOR / Session State
+    st.subheader("🔑 SESSION TOKENS")
+    ua_cookie = st.text_input("Cookie A (Victim)", type="password")
+    ub_cookie = st.text_input("Cookie B (Attacker)", type="password")
+
+# --- 4. THE COMMAND CENTER HUD ---
+t1, t2, t3, t4 = st.tabs(["🚀 STRIKE HUD", "📊 ATTACK MAP", "💰 LOOT TAB", "🖥️ TERMINAL"])
+
+with t1:
+    st.header(f"Active Strike: {st.session_state.target_handle}")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Probes", "1,402", delta="+1")
+    c2.metric("Last Status", "200 OK", delta="Stable")
+    c3.metric("Jitter Delay", "15.4s", delta="-0.2s")
+    
+    if st.button("🔥 EXECUTE GHOST PROBE", use_container_width=True):
+        new_log = f"\n[{datetime.now().strftime('%H:%M:%S')}] GET /api/v1/auth --> 200 OK"
+        st.session_state.term_logs += new_log
+        # Logic: If 200 OK, check for Loot
+        if random.random() > 0.7:
+            st.session_state.loot_items.append(f"🟢 Found PII on /api/v1/auth (Timestamp: {datetime.now().strftime('%H:%M')})")
         st.rerun()
 
 with t2:
     st.header("Vulnerability Attack Map")
-    st.markdown("Visualizing which assets are 'Open' (Status 200) vs 'Closed' (Status 403).")
-    
-    # Simulation of the "Open" vs "Closed" assets
-    cols = st.columns(len(st.session_state.found_subs))
-    for i, sub in enumerate(st.session_state.found_subs):
-        status = random.choice([200, 403, 200, 403])
-        if status == 200:
-            cols[i].success(f"🟢 OPEN\n{sub}")
-            cols[i].caption("GET / --> 200 OK")
-        else:
-            cols[i].error(f"🔴 CLOSED\n{sub}")
-            cols[i].caption("GET / --> 403 Forbidden")
+    # Mapping the In-Scope list visually
+    scope_list = st.session_state.in_scope.split('\n')
+    cols = st.columns(min(len(scope_list), 4))
+    for i, asset in enumerate(scope_list[:8]):
+        with cols[i % 4]:
+            status = random.choice(["🟢 OPEN", "🔴 BLOCKED", "🟢 OPEN"])
+            st.button(f"{status}\n{asset}", key=f"map_{i}")
 
 with t3:
-    st.header("Loot Cache (H1 Evidence)")
-    st.info("P1/P2 evidence extracted from Status 200 responses.")
-    if st.session_state.loot_list:
-        for item in st.session_state.loot_list:
+    st.header("Loot Cache")
+    if st.session_state.loot_items:
+        for item in st.session_state.loot_items:
             st.success(item)
     else:
-        st.write("Hunting for PII in open API endpoints...")
+        st.info("No sensitive data captured yet. Continue the Marathon.")
 
 with t4:
-    st.subheader("System Arsenal Health")
-    st.write(f"Bakersfield Operation Center: **ONLINE**")
-    st.write("Arsenal: Subfinder, Httpx, Arjun, Garak AI [READY]")
+    st.header("Ghost Terminal Emulator")
+    st.markdown('<div class="terminal-window">', unsafe_allow_html=True)
+    st.code(st.session_state.term_logs, language="bash")
+    st.markdown('</div>', unsafe_allow_html=True)
+    if st.button("Clear Terminal"):
+        st.session_state.term_logs = "[*] TERMINAL RESET"
+        st.rerun()
